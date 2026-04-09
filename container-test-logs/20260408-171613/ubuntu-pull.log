@@ -1,0 +1,8 @@
+24.04: Pulling from library/ubuntu
+689b91d88a0f: Pulling fs layer
+b22f29e93d86: Download complete
+689b91d88a0f: Download complete
+689b91d88a0f: Pull complete
+Digest: sha256:84e77dee7d1bc93fb029a45e3c6cb9d8aa4831ccfcc7103d36e876938d28895b
+Status: Downloaded newer image for ubuntu:24.04
+docker.io/library/ubuntu:24.04

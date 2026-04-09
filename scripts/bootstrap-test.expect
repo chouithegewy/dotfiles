@@ -1,0 +1,55 @@
+#!/usr/bin/expect -f
+set timeout -1
+match_max 100000
+
+if {[llength $argv] != 1} {
+  puts stderr "usage: bootstrap-test.expect <workspace>"
+  exit 2
+}
+
+set workspace [lindex $argv 0]
+set failure_prompt_count 0
+
+proc maybe_skip_failure {} {
+  global failure_prompt_count
+  if {$failure_prompt_count == 0} {
+    set failure_prompt_count 1
+    send -- "d\r"
+  } else {
+    send -- "s\r"
+  }
+}
+
+spawn bash -lc "cd '$workspace' && ./bootstrap.sh"
+
+expect {
+  -re {Run step 'Enable core services'\? \[Y/n\] \[Y\]: $} {
+    send -- "n\r"
+    exp_continue
+  }
+  -re {Run step '.*'\? \[Y/n\] \[Y\]: $} {
+    send -- "y\r"
+    exp_continue
+  }
+  -re {No AUR helper detected\..*\[Y/n\] \[Y\]: $} {
+    send -- "y\r"
+    exp_continue
+  }
+  -re {Make .* the default shell for .*\? \[Y/n\] \[Y\]: $} {
+    send -- "y\r"
+    exp_continue
+  }
+  -re {Continue configuring hibernation anyway\? \[Y/n\] \[Y\]: $} {
+    send -- "n\r"
+    exp_continue
+  }
+  -re {Choose retry, skip, diagnose, or abort \[r/s/d/a\] \[r\]: $} {
+    maybe_skip_failure
+    exp_continue
+  }
+  eof {
+    catch wait result
+    set exit_code [lindex $result 3]
+    exit $exit_code
+  }
+}

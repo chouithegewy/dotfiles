@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Slippi Launcher
+Comment=Launch Slippi Online and replay tools
+Exec=slippi-launcher
+Icon=slippi-launcher
+Terminal=false
+Categories=Game;Network;

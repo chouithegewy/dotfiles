@@ -1,0 +1,11 @@
+spawn bash -lc cd '/workspace' && ./bootstrap.sh
+Bootstrap root: /workspace
+Logs: /workspace/.bootstrap-logs/20260409-001654
+Target user: tester
+Target home: /home/tester
+Distro family: arch (arch)
+Arch helper: none detected
+Laptop detection: yes
+Swap: /dev/nvme0n1p3 (partition, 19GB)
+Run step 'Refresh Arch packages'? [Y/n] [Y]: y
+tr: range-endpoints of '_-\012' are in reverse collating sequence order

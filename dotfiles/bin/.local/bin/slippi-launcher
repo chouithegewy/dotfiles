@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+base_dir="${HOME}/.local/opt/slippi-launcher/current"
+
+if [ -x "${base_dir}/slippi-launcher.AppImage" ]; then
+  exec "${base_dir}/slippi-launcher.AppImage" "$@"
+fi
+
+if [ -x "${base_dir}/Slippi Launcher" ]; then
+  exec "${base_dir}/Slippi Launcher" "$@"
+fi
+
+if [ -x "${base_dir}/slippi-launcher" ]; then
+  exec "${base_dir}/slippi-launcher" "$@"
+fi
+
+printf 'Slippi Launcher is not installed under %s\n' "${base_dir}" >&2
+exit 1

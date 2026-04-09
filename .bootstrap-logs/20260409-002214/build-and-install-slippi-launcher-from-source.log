@@ -1,0 +1,102 @@
+    bash -lc mkdir\ -p\ \'/home/tester/.local/src\'\;\ if\ \[\ -d\ \'/home/tester/.local/src/slippi-launcher/.git\'\ \]\;\ then\ git\ -C\ \'/home/tester/.local/src/slippi-launcher\'\ pull\ --ff-only\;\ else\ git\ clone\ https://github.com/project-slippi/slippi-launcher.git\ \'/home/tester/.local/src/slippi-launcher\'\;\ fi 
+Cloning into '/home/tester/.local/src/slippi-launcher'...
+    bash -lc export\ NVM_DIR=\'/home/tester/.nvm\'\;\ \[\ -s\ \"\$NVM_DIR/nvm.sh\"\ \]\ \&\&\ .\ \"\$NVM_DIR/nvm.sh\"\;\ nvm\ install\ --lts\;\ nvm\ use\ --lts\;\ cd\ \'/home/tester/.local/src/slippi-launcher\'\;\ npm\ install\;\ npm\ run\ package 
+Installing latest LTS version.
+v24.14.1 is already installed.
+Now using node v24.14.1 (npm v11.11.0)
+Now using node v24.14.1 (npm v11.11.0)
+npm warn skipping integrity check for git dependency ssh://git@github.com/electron/node-gyp.git
+npm warn deprecated stable@0.1.8: Modern JS already guarantees Array#sort() is a stable sort, so this library is deprecated. See the compatibility table on MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#browser_compatibility
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated glob@8.1.0: Glob versions prior to v9 are no longer supported
+npm warn deprecated electron-osx-sign@0.6.0: Please use @electron/osx-sign moving forward. Be aware the API is slightly different
+npm warn deprecated boolean@3.2.0: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated asar@3.2.0: Please use @electron/asar moving forward.  There is no API change, just a package name change
+npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+npm warn deprecated @stylexjs/webpack-plugin@0.4.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated @stylexjs/shared@0.4.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated @npmcli/move-file@2.0.1: This functionality has been moved to @npmcli/fs
+npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm warn deprecated @mui/base@5.0.0-beta.40-1: This package has been replaced by @base-ui/react
+npm warn deprecated @babel/plugin-proposal-export-namespace-from@7.18.9: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-export-namespace-from instead.
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+
+> postinstall
+> ts-node .erb/scripts/check-native-dep.js && electron-builder install-app-deps && cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.renderer.dev.dll.ts
+
+  • electron-builder  version=23.6.0
+  • loaded configuration  file=/home/tester/.local/src/slippi-launcher/electron-builder.json
+  • installing production dependencies  platform=linux arch=x64 appDir=/home/tester/.local/src/slippi-launcher/release/app
+
+added 1835 packages, and audited 1836 packages in 51s
+
+449 packages are looking for funding
+  run `npm fund` for details
+
+34 vulnerabilities (5 low, 3 moderate, 24 high, 2 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+npm notice
+npm notice New minor version of npm available! 11.11.0 -> 11.12.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+npm notice To update run: npm install -g npm@11.12.1
+npm notice
+
+> package
+> npm run clean && npm run build && electron-builder build --publish never
+
+
+> clean
+> ts-node ./.erb/scripts/clean.js dist
+
+
+> build
+> concurrently "npm run build:main" "npm run build:renderer" "npm run build:migrations" "npm run i18n:convert"
+
+[0] 
+[0] > build:main
+[0] > cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.main.prod.ts
+[0] 
+[3] 
+[3] > i18n:convert
+[3] > i18next-auto-keys convert --batch --output ./release/app/dist/renderer/i18n
+[3] 
+[2] 
+[2] > build:migrations
+[2] > cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.migrations.prod.ts
+[2] 
+[1] 
+[1] > build:renderer
+[1] > cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.renderer.prod.ts
+[1] 
+[3] 🔍 Scanning for .po files using pattern: /home/tester/.local/src/slippi-launcher/locales/*.po
+[3] 📁 Found 4 .po files
+[3] 📖 Converting .po file to i18next JSON: /home/tester/.local/src/slippi-launcher/locales/ru.po
+[3] 📁 Output: release/app/dist/renderer/i18n/ru.json
+[3] 🔑 Processed 413 translations. Skipped 0 untranslated entries.
+[3] ✅ i18next JSON file generated: release/app/dist/renderer/i18n/ru.json
+[3] 📖 Converting .po file to i18next JSON: /home/tester/.local/src/slippi-launcher/locales/pt.po
+[3] 📁 Output: release/app/dist/renderer/i18n/pt.json
+[3] 🔑 Processed 413 translations. Skipped 0 untranslated entries.
+[3] ✅ i18next JSON file generated: release/app/dist/renderer/i18n/pt.json
+[3] 📖 Converting .po file to i18next JSON: /home/tester/.local/src/slippi-launcher/locales/ja.po
+[3] 📁 Output: release/app/dist/renderer/i18n/ja.json
+[3] 🔑 Processed 403 translations. Skipped 10 untranslated entries.
+[3] ✅ i18next JSON file generated: release/app/dist/renderer/i18n/ja.json
+[3] 📖 Converting .po file to i18next JSON: /home/tester/.local/src/slippi-launcher/locales/es.po
+[3] 📁 Output: release/app/dist/renderer/i18n/es.json
+[3] 🔑 Processed 403 translations. Skipped 10 untranslated entries.
+[3] ✅ i18next JSON file generated: release/app/dist/renderer/i18n/es.json
+[3] ✅ Batch conversion completed. Output directory: ./release/app/dist/renderer/i18n
+[3] npm run i18n:convert exited with code 0
+[2] npm run build:migrations exited with code 0

@@ -1,0 +1,12 @@
+latest: Pulling from library/archlinux
+6bd69c77b316: Pulling fs layer
+c9ea86d6f9b5: Pulling fs layer
+6bd69c77b316: Download complete
+8956b74e0052: Download complete
+9393903773d2: Download complete
+c9ea86d6f9b5: Download complete
+6bd69c77b316: Pull complete
+c9ea86d6f9b5: Pull complete
+Digest: sha256:b4df475619469581537637ceaace6075f4912ea1cd6db6b99d463e3a72969d04
+Status: Downloaded newer image for archlinux:latest
+docker.io/library/archlinux:latest

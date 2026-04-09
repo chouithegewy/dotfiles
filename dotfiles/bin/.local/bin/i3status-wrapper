@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+I3STATUS_CONFIG="${I3STATUS_CONFIG:-$HOME/.config/i3status/config}"
+MAX_CORES="${I3_CPU_MAX_CORES:-8}"
+
+declare -a PREV_TOTAL=()
+declare -a PREV_IDLE=()
+declare -a CUR_TOTAL=()
+declare -a CUR_IDLE=()
+
+json_escape() {
+  local text="$1"
+  text="${text//\\/\\\\}"
+  text="${text//\"/\\\"}"
+  printf '%s' "$text"
+}
+
+emit_block() {
+  local name="$1"
+  local text="$2"
+  local color="${3:-}"
+
+  printf '{"name":"%s","full_text":"%s"' "$(json_escape "$name")" "$(json_escape "$text")"
+  if [ -n "$color" ]; then
+    printf ',"color":"%s"' "$color"
+  fi
+  printf '}'
+}
+
+sample_cpu() {
+  local index=0
+  local cpu user nice system idle iowait irq softirq steal guest guest_nice
+
+  CUR_TOTAL=()
+  CUR_IDLE=()
+
+  while read -r cpu user nice system idle iowait irq softirq steal guest guest_nice; do
+    [[ "$cpu" =~ ^cpu[0-9]+$ ]] || continue
+    CUR_IDLE[index]="$((idle + iowait))"
+    CUR_TOTAL[index]="$((user + nice + system + idle + iowait + irq + softirq + steal))"
+    index=$((index + 1))
+  done </proc/stat
+}
+
+cpu_usage_text() {
+  local i delta_total delta_idle usage total_usage=0 count=0 shown=0 preview=""
+
+  sample_cpu
+
+  if [ "${#PREV_TOTAL[@]}" -eq 0 ]; then
+    PREV_TOTAL=("${CUR_TOTAL[@]}")
+    PREV_IDLE=("${CUR_IDLE[@]}")
+    printf 'CPU warming'
+    return 0
+  fi
+
+  for i in "${!CUR_TOTAL[@]}"; do
+    delta_total="$((CUR_TOTAL[i] - PREV_TOTAL[i]))"
+    delta_idle="$((CUR_IDLE[i] - PREV_IDLE[i]))"
+    if [ "$delta_total" -gt 0 ]; then
+      usage="$((100 * (delta_total - delta_idle) / delta_total))"
+    else
+      usage=0
+    fi
+
+    total_usage="$((total_usage + usage))"
+    count="$((count + 1))"
+
+    if [ "$shown" -lt "$MAX_CORES" ]; then
+      preview="${preview}${usage}% "
+      shown="$((shown + 1))"
+    fi
+  done
+
+  PREV_TOTAL=("${CUR_TOTAL[@]}")
+  PREV_IDLE=("${CUR_IDLE[@]}")
+
+  if [ "$count" -eq 0 ]; then
+    printf 'CPU n/a'
+    return 0
+  fi
+
+  preview="${preview% }"
+  if [ "$count" -gt "$MAX_CORES" ]; then
+    preview="${preview} ..."
+  fi
+
+  printf 'CPU %s%% [%s]' "$((total_usage / count))" "$preview"
+}
+
+temp_from_sensors() {
+  command -v sensors >/dev/null 2>&1 || return 1
+
+  sensors 2>/dev/null | awk '
+    /Package id 0:/ {
+      value = $4
+      gsub(/[+°C]/, "", value)
+      print int(value)
+      exit
+    }
+    /Tctl:/ {
+      value = $2
+      gsub(/[+°C]/, "", value)
+      print int(value)
+      exit
+    }
+    /Tdie:/ {
+      value = $2
+      gsub(/[+°C]/, "", value)
+      print int(value)
+      exit
+    }
+    /^temp1:/ {
+      value = $2
+      gsub(/[+°C]/, "", value)
+      print int(value)
+      exit
+    }
+  '
+}
+
+temp_from_sysfs() {
+  local dir name path raw label label_value
+
+  for dir in /sys/class/hwmon/hwmon*; do
+    [ -r "${dir}/name" ] || continue
+    name="$(<"${dir}/name")"
+
+    case "$name" in
+      coretemp|k10temp|zenpower|cpu_thermal|acpitz)
+        ;;
+      *)
+        continue
+        ;;
+    esac
+
+    for path in "${dir}"/temp*_input; do
+      [ -r "$path" ] || continue
+
+      label="${path%_input}_label"
+      if [ -r "$label" ]; then
+        label_value="$(<"$label")"
+        case "$label_value" in
+          *Package*|*Tctl*|*Tdie*|*CPU*|*Core\ 0*)
+            ;;
+          *)
+            continue
+            ;;
+        esac
+      fi
+
+      raw="$(<"$path")"
+      [[ "$raw" =~ ^[0-9]+$ ]] || continue
+      printf '%s\n' "$((raw / 1000))"
+      return 0
+    done
+  done
+
+  return 1
+}
+
+temp_text() {
+  local temp
+
+  temp="$(temp_from_sensors || true)"
+  if [ -z "$temp" ]; then
+    temp="$(temp_from_sysfs || true)"
+  fi
+
+  if [ -z "$temp" ]; then
+    printf 'Temp n/a'
+  else
+    printf 'Temp %sC' "$temp"
+  fi
+}
+
+temp_color() {
+  local temp
+  temp="$(temp_from_sensors || true)"
+  if [ -z "$temp" ]; then
+    temp="$(temp_from_sysfs || true)"
+  fi
+
+  if [ -z "$temp" ]; then
+    return 0
+  fi
+
+  if [ "$temp" -ge 85 ]; then
+    printf '#ff6b6b'
+  elif [ "$temp" -ge 75 ]; then
+    printf '#f0c674'
+  fi
+}
+
+compose_prefix() {
+  local cpu_text temp_value temp_block_color
+
+  cpu_text="$(cpu_usage_text)"
+  temp_value="$(temp_text)"
+  temp_block_color="$(temp_color)"
+
+  printf '%s,%s' \
+    "$(emit_block "cpu" "$cpu_text")" \
+    "$(emit_block "temp" "$temp_value" "$temp_block_color")"
+}
+
+i3status -c "$I3STATUS_CONFIG" | {
+  read -r line
+  printf '%s\n' "$line"
+
+  read -r line
+  printf '%s\n' "$line"
+
+  while IFS= read -r line; do
+    case "$line" in
+      ,\[*)
+        printf ',[%s,%s\n' "$(compose_prefix)" "${line#,\[}"
+        ;;
+      \[*)
+        printf '[%s,%s\n' "$(compose_prefix)" "${line#[}"
+        ;;
+      *)
+        printf '%s\n' "$line"
+        ;;
+    esac
+  done
+}

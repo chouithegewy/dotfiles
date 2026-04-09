@@ -1,0 +1,113 @@
+    sudo pacman -S --needed --noconfirm bzip2 libffi openssl readline sqlite tk xz zlib 
+warning: bzip2-1.0.8-6 is up to date -- skipping
+warning: libffi-3.5.2-1 is up to date -- skipping
+warning: openssl-3.6.2-1 is up to date -- skipping
+warning: readline-8.3.003-1 is up to date -- skipping
+warning: sqlite-3.52.0-1 is up to date -- skipping
+warning: xz-5.8.3-1 is up to date -- skipping
+warning: zlib-1:1.3.2-3 is up to date -- skipping
+resolving dependencies...
+looking for conflicting packages...
+
+Package (2)   New Version  Net Change  Download Size
+
+extra/libxss  1.2.5-1        0.03 MiB       0.01 MiB
+extra/tk      8.6.16-1      12.27 MiB       3.67 MiB
+
+Total Download Size:    3.68 MiB
+Total Installed Size:  12.29 MiB
+
+:: Proceed with installation? [Y/n] 
+:: Retrieving packages...
+ tk-8.6.16-1-x86_64 downloading...
+ libxss-1.2.5-1-x86_64 downloading...
+checking keyring...
+checking package integrity...
+loading package files...
+checking for file conflicts...
+:: Processing package changes...
+installing libxss...
+installing tk...
+:: Running post-transaction hooks...
+(1/1) Arming ConditionNeedsUpdate...
+    bash -lc mkdir\ -p\ \'/home/tester\'\ \&\&\ touch\ \'/home/tester/.zshrc\' 
+    bash -lc sh\ -c\ \"\$\(curl\ -fsSL\ https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh\)\"\ \"\"\ --unattended 
+Cloning Oh My Zsh...
+From https://github.com/ohmyzsh/ohmyzsh
+ * [new branch]      master     -> origin/master
+Already on 'master'
+branch 'master' set up to track 'origin/master'.
+/workspace
+
+Looking for an existing zsh config...
+Backing up to /home/tester/.zshrc.pre-oh-my-zsh
+Using the Oh My Zsh template file and adding it to /home/tester/.zshrc.
+
+         __                                     __   
+  ____  / /_     ____ ___  __  __   ____  _____/ /_  
+ / __ \/ __ \   / __ `__ \/ / / /  /_  / / ___/ __ \ 
+/ /_/ / / / /  / / / / / / /_/ /    / /_(__  ) / / / 
+\____/_/ /_/  /_/ /_/ /_/\__, /    /___/____/_/ /_/  
+                        /____/                       ....is now installed!
+
+
+Before you scream Oh My Zsh! look over the `.zshrc` file to select plugins, themes, and options.
+
+• Follow us on X: https://x.com/ohmyzsh
+• Join our Discord community: https://discord.gg/ohmyzsh
+• Get stickers, t-shirts, coffee mugs and more: https://commitgoods.com/collections/oh-my-zsh
+
+Run zsh to try it out.
+    sudo chsh -s /usr/sbin/zsh tester 
+chsh: Warning: "/usr/sbin/zsh" is not listed in /etc/shells.
+Changing shell for tester.
+Shell changed.
+    bash -lc PROFILE=/dev/null\ bash\ -lc\ \'curl\ -o-\ https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh\ \|\ bash\' 
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0100  16774 100  16774   0      0 247.1k      0                              0100  16774 100  16774   0      0 246.9k      0                              0100  16774 100  16774   0      0 246.7k      0                              0
+=> Downloading nvm from git to '/home/tester/.nvm'
+=> Cloning into '/home/tester/.nvm'...
+* (HEAD detached at FETCH_HEAD)
+  master
+=> Compressing and cleaning up git repository
+
+
+=> Close and reopen your terminal to start using nvm or run the following to use it now:
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+    bash -lc export\ NVM_DIR=\'/home/tester/.nvm\'\;\ \[\ -s\ \"\$NVM_DIR/nvm.sh\"\ \]\ \&\&\ .\ \"\$NVM_DIR/nvm.sh\"\;\ nvm\ install\ --lts\;\ nvm\ alias\ default\ \'lts/\*\' 
+Installing latest LTS version.
+Downloading and installing node v24.14.1...
+Downloading https://nodejs.org/dist/v24.14.1/node-v24.14.1-linux-x64.tar.xz...
+                                                                           0.0%##                                                                         3.1%####                                                                       6.5%########                                                                  11.4%###########                                                               16.4%###############                                                           21.2%##################                                                        25.2%#####################                                                     30.4%#########################                                                 35.2%#############################                                             41.5%#################################                                         46.4%#####################################                                     51.9%#########################################                                 57.3%##############################################                            64.1%#################################################                         69.1%#####################################################                     74.7%##########################################################                81.5%###############################################################           88.2%###################################################################       93.8%#######################################################################   99.9%######################################################################## 100.0%
+Computing checksum with sha256sum
+Checksums matched!
+Now using node v24.14.1 (npm v11.11.0)
+Creating default alias: default -> lts/* (-> v24.14.1 *)
+default -> lts/* (-> v24.14.1 *)
+    bash -lc curl\ -fsSL\ https://pyenv.run\ \|\ bash 
+Cloning into '/home/tester/.pyenv'...
+Cloning into '/home/tester/.pyenv/plugins/pyenv-doctor'...
+Cloning into '/home/tester/.pyenv/plugins/pyenv-update'...
+Cloning into '/home/tester/.pyenv/plugins/pyenv-virtualenv'...
+
+WARNING: seems you still have not added 'pyenv' to the load path.
+
+# Load pyenv automatically by appending
+# the following to 
+# ~/.bash_profile if it exists, otherwise ~/.profile (for login shells)
+# and ~/.bashrc (for interactive shells) :
+
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init - bash)"
+
+# Restart your shell for the changes to take effect.
+
+# Load pyenv-virtualenv automatically by adding
+# the following to ~/.bashrc:
+
+eval "$(pyenv virtualenv-init -)"
+

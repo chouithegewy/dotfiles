@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+command -v powerprofilesctl >/dev/null 2>&1 || exit 0
+
+if grep -q 1 /sys/class/power_supply/AC*/online 2>/dev/null || grep -q 1 /sys/class/power_supply/ADP*/online 2>/dev/null; then
+  powerprofilesctl set balanced >/dev/null 2>&1 || true
+else
+  powerprofilesctl set power-saver >/dev/null 2>&1 || true
+fi

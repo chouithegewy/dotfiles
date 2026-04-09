@@ -1,0 +1,77 @@
+Get:1 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]
+Get:2 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:3 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1988 kB]
+Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:6 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1504 kB]
+Get:7 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]
+Get:8 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [34.8 kB]
+Get:9 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [3505 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]
+Get:11 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]
+Get:12 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]
+Get:13 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2153 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [38.1 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [2371 kB]
+Get:16 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [3677 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [695 B]
+Get:18 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.5 kB]
+Get:19 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.1 kB]
+Fetched 37.6 MB in 11s (3418 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  libapparmor1 libtcl8.6 tcl-expect tcl8.6 tzdata
+Suggested packages:
+  tk8.6 tcl-tclreadline
+The following NEW packages will be installed:
+  expect libapparmor1 libtcl8.6 sudo tcl-expect tcl8.6 tzdata
+0 upgraded, 7 newly installed, 0 to remove and 3 not upgraded.
+Need to get 2527 kB of archives.
+After this operation, 9857 kB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libapparmor1 amd64 4.0.1really4.0.1-0ubuntu0.24.04.5 [50.5 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 sudo amd64 1.9.15p5-3ubuntu5.24.04.2 [948 kB]
+Get:3 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 tzdata all 2026a-0ubuntu0.24.04.1 [280 kB]
+Get:4 http://archive.ubuntu.com/ubuntu noble/main amd64 libtcl8.6 amd64 8.6.14+dfsg-1build1 [988 kB]
+Get:5 http://archive.ubuntu.com/ubuntu noble/main amd64 tcl8.6 amd64 8.6.14+dfsg-1build1 [14.7 kB]
+Get:6 http://archive.ubuntu.com/ubuntu noble/universe amd64 tcl-expect amd64 5.45.4-3 [110 kB]
+Get:7 http://archive.ubuntu.com/ubuntu noble/universe amd64 expect amd64 5.45.4-3 [137 kB]
+Fetched 2527 kB in 5s (464 kB/s)
+Selecting previously unselected package libapparmor1:amd64.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 4381 files and directories currently installed.)
+Preparing to unpack .../0-libapparmor1_4.0.1really4.0.1-0ubuntu0.24.04.5_amd64.deb ...
+Unpacking libapparmor1:amd64 (4.0.1really4.0.1-0ubuntu0.24.04.5) ...
+Selecting previously unselected package sudo.
+Preparing to unpack .../1-sudo_1.9.15p5-3ubuntu5.24.04.2_amd64.deb ...
+Unpacking sudo (1.9.15p5-3ubuntu5.24.04.2) ...
+Selecting previously unselected package tzdata.
+Preparing to unpack .../2-tzdata_2026a-0ubuntu0.24.04.1_all.deb ...
+Unpacking tzdata (2026a-0ubuntu0.24.04.1) ...
+Selecting previously unselected package libtcl8.6:amd64.
+Preparing to unpack .../3-libtcl8.6_8.6.14+dfsg-1build1_amd64.deb ...
+Unpacking libtcl8.6:amd64 (8.6.14+dfsg-1build1) ...
+Selecting previously unselected package tcl8.6.
+Preparing to unpack .../4-tcl8.6_8.6.14+dfsg-1build1_amd64.deb ...
+Unpacking tcl8.6 (8.6.14+dfsg-1build1) ...
+Selecting previously unselected package tcl-expect:amd64.
+Preparing to unpack .../5-tcl-expect_5.45.4-3_amd64.deb ...
+Unpacking tcl-expect:amd64 (5.45.4-3) ...
+Selecting previously unselected package expect.
+Preparing to unpack .../6-expect_5.45.4-3_amd64.deb ...
+Unpacking expect (5.45.4-3) ...
+Setting up libapparmor1:amd64 (4.0.1really4.0.1-0ubuntu0.24.04.5) ...
+Setting up tzdata (2026a-0ubuntu0.24.04.1) ...
+
+Current default time zone: 'Etc/UTC'
+Local time is now:      Thu Apr  9 00:18:53 UTC 2026.
+Universal Time is now:  Thu Apr  9 00:18:53 UTC 2026.
+Run 'dpkg-reconfigure tzdata' if you wish to change it.
+
+Setting up libtcl8.6:amd64 (8.6.14+dfsg-1build1) ...
+Setting up sudo (1.9.15p5-3ubuntu5.24.04.2) ...
+Setting up tcl8.6 (8.6.14+dfsg-1build1) ...
+Setting up tcl-expect:amd64 (5.45.4-3) ...
+Setting up expect (5.45.4-3) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.7) ...

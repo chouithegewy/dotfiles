@@ -1,0 +1,13 @@
+    sudo pacman -S --needed --noconfirm rustup 
+warning: rustup-1.29.0-2 is up to date -- skipping
+ there is nothing to do
+    bash -lc rustup\ default\ stable\ \&\&\ rustup\ component\ add\ clippy\ rustfmt 
+info: syncing channel updates for stable-x86_64-unknown-linux-gnu
+info: latest update on 2026-03-26 for version 1.94.1 (e408947bf 2026-03-25)
+info: downloading 6 components
+info: default toolchain set to stable-x86_64-unknown-linux-gnu
+
+  stable-x86_64-unknown-linux-gnu installed - rustc 1.94.1 (e408947bf 2026-03-25)
+
+info: component clippy is up to date
+info: component rustfmt is up to date

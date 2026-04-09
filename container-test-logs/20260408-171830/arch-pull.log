@@ -1,0 +1,4 @@
+latest: Pulling from library/archlinux
+Digest: sha256:b4df475619469581537637ceaace6075f4912ea1cd6db6b99d463e3a72969d04
+Status: Image is up to date for archlinux:latest
+docker.io/library/archlinux:latest
