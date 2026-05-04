@@ -99,6 +99,7 @@ docker exec -u "$RUN_USER" -e HOME="$RUN_HOME" -e USER="$RUN_USER" -e SHELL="$SH
 
   require_target "$HOME/.xinitrc" /workspace/dotfiles/x/.xinitrc
   require_target "$HOME/.Xresources" /workspace/dotfiles/x/.Xresources
+  test -x "$HOME/.xinitrc"
   require_target "$HOME/.config/i3/config" /workspace/dotfiles/i3/.config/i3/config
   test ! -e "$HOME/.i3/config"
 

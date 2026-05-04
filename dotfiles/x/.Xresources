@@ -1,8 +1,16 @@
-xterm*visualBell: true
-xterm*bellSuppressTime: 100
-xterm*VT100.Translations: #override \
+XTerm*visualBell: true
+UXTerm*visualBell: true
+XTerm*bellSuppressTime: 100
+UXTerm*bellSuppressTime: 100
+XTerm*VT100.Translations: #override \
       Ctrl Shift <KeyPress> Insert: insert-selection(CLIPBOARD) \n\
       Ctrl Shift <Key>V:    insert-selection(CLIPBOARD) \n\
       Ctrl Shift <Key>C:    copy-selection(CLIPBOARD) \n\
       Ctrl <Btn1Up>: exec-formatted("xdg-open '%t'", PRIMARY)
-xterm*backarrowKeyIsErase: true
+UXTerm*VT100.Translations: #override \
+      Ctrl Shift <KeyPress> Insert: insert-selection(CLIPBOARD) \n\
+      Ctrl Shift <Key>V:    insert-selection(CLIPBOARD) \n\
+      Ctrl Shift <Key>C:    copy-selection(CLIPBOARD) \n\
+      Ctrl <Btn1Up>: exec-formatted("xdg-open '%t'", PRIMARY)
+XTerm*backarrowKeyIsErase: true
+UXTerm*backarrowKeyIsErase: true

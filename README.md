@@ -33,7 +33,7 @@ In this repo the Stow packages are under `dotfiles/`, and the bootstrap applies 
 
 - Your current `~/.tmux.conf` has been copied into the `tmux` Stow package.
 - The i3 config uses Alt as the modifier, `uxterm` as the terminal, `dmenu_run` as the launcher, `i3status` for the bar, and `maim` plus `xclip` for screenshot-to-clipboard.
-- `~/.xinitrc` is managed by Stow and runs `exec i3`, so `startx` does not fall back to the default three-xterm session.
+- `~/.xinitrc` is managed by Stow, merges `~/.Xresources`, and runs `exec i3`, so `startx` does not fall back to the default three-xterm session.
 - `~/.Xresources` is managed by Stow. `~/.Xauthority` is intentionally not tracked because it is generated runtime state.
 - `zsh`, Oh My Zsh, `nvm`, and `pyenv` are installed together, with `~/.zshrc` and Oh My Zsh custom init managed by Stow.
 - Codex CLI is installed with npm through `nvm`; `~/.codex/config.toml` and `~/.codex/rules/default.rules` are managed by Stow, while auth, logs, history, sessions, and caches stay untracked.
