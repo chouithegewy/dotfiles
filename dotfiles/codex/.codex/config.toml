@@ -1,0 +1,48 @@
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+plan_mode_reasoning_effort = "xhigh"
+approvals_reviewer = "guardian_subagent"
+[projects."/home/david/school/CS3338-SoftwareEngineeringTools/CS3338-assignment-10"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/202601Group09-repo"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/michael_email_list"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/resume_ats_optimizer"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/michaelchilds.dev"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/rsakey"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/Team0b1010"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/nodejs_hw3"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/prj2_client_server"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/nsf_open_siem_msp_analysis"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/des"]
+trust_level = "trusted"
+
+[projects."/home/david/dotfiles"]
+trust_level = "trusted"
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
+
+[notice]
+fast_default_opt_out = true
+
+[notice.model_migrations]
+"gpt-5.3-codex" = "gpt-5.4"

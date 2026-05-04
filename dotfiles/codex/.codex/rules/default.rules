@@ -1,0 +1,4 @@
+prefix_rule(pattern=["/usr/bin/zsh", "-lc", "GRADLE_USER_HOME=$PWD/.gradle-local ./gradlew test"], decision="allow")
+prefix_rule(pattern=["/usr/bin/zsh", "-lc", "GRADLE_USER_HOME=$PWD/.gradle-local ./gradlew compileJava"], decision="allow")
+prefix_rule(pattern=["/usr/bin/zsh", "-lc", "GRADLE_USER_HOME=$PWD/.gradle-local ./gradlew test --tests 'edu.csula.cs3337.group09.infrequentflier.scraper.*'"], decision="allow")
+prefix_rule(pattern=["/usr/bin/zsh", "-lc", "GRADLE_USER_HOME=$PWD/.gradle-local ./gradlew test --tests 'edu.csula.cs3337.group09.infrequentflier.AirportControllerTest' --tests 'edu.csula.cs3337.group09.infrequentflier.CommunityControllerTest'"], decision="allow")

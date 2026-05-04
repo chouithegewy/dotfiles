@@ -11,3 +11,4 @@ if ! command -v fd >/dev/null 2>&1 && command -v fdfind >/dev/null 2>&1; then
 fi
 
 bindkey -v
+alias vim='nvim'

@@ -1,0 +1,11 @@
+/.bootstrap-logs/
+/container-test-logs/
+/.config/
+/dotfiles/applications/.local/share/applications/mimeapps.list
+/dotfiles/cargo/.cargo/.crates.toml
+/dotfiles/cargo/.cargo/.crates2.json
+/dotfiles/cargo/.cargo/.global-cache
+/dotfiles/cargo/.cargo/.package-cache
+/dotfiles/cargo/.cargo/.package-cache-mutate
+/dotfiles/cargo/.cargo/bin/
+/dotfiles/cargo/.cargo/registry/

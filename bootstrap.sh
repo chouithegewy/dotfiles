@@ -29,13 +29,21 @@ ARCH_COMMON_PACKAGES=(
   ca-certificates
   calibre
   curl
+  dbus
+  dex
+  dmenu
+  eza
   git
   fd
+  gimp
   i3-wm
   i3lock
   i3status
   jq
+  libpulse
+  libreoffice-fresh
   lm_sensors
+  maim
   mold
   neovim
   network-manager-applet
@@ -43,15 +51,19 @@ ARCH_COMMON_PACKAGES=(
   obs-studio
   polkit-gnome
   power-profiles-daemon
+  psmisc
   ripgrep
   rofi
   rustup
   stow
+  thunar
   tmux
   unzip
   vlc
   wget
   xclip
+  xdg-desktop-portal
+  xdg-desktop-portal-xapp
   xorg-server
   xorg-xinit
   xorg-xrandr
@@ -69,28 +81,40 @@ DEB_COMMON_PACKAGES=(
   build-essential
   ca-certificates
   curl
+  dbus-user-session
+  dex
+  dmenu
+  eza
   fd-find
   git
+  gimp
   gnupg
   i3-wm
   i3lock
   i3status
   jq
+  libreoffice
   lm-sensors
+  maim
   neovim
   network-manager
   network-manager-gnome
   obs-studio
   policykit-1-gnome
   power-profiles-daemon
+  psmisc
+  pulseaudio-utils
   ripgrep
   rofi
   stow
+  thunar
   tmux
   unzip
   vlc
   wget
   xclip
+  xdg-desktop-portal
+  xdg-desktop-portal-xapp
   xorg
   xss-lock
   xterm
@@ -542,6 +566,20 @@ diagnose_chrome() {
   command -v google-chrome-stable >/dev/null 2>&1 && google-chrome-stable --version || true
 }
 
+diagnose_discord() {
+  log
+  log "Discord diagnostics:"
+  command -v discord >/dev/null 2>&1 && log "- discord command: $(command -v discord)" || log "- discord command: missing"
+  case "$PKG_FAMILY" in
+    arch)
+      pacman -Q discord >/dev/null 2>&1 && pacman -Q discord || true
+      ;;
+    deb)
+      dpkg-query -W -f='${Package} ${Version}\n' discord 2>/dev/null || true
+      ;;
+  esac
+}
+
 diagnose_calibre() {
   log
   log "Calibre diagnostics:"
@@ -559,6 +597,12 @@ diagnose_shell_tooling() {
   log "Shell tooling diagnostics:"
   command -v zsh >/dev/null 2>&1 && zsh --version || true
   run_target_shell_logged "Shell runtime check" "printf 'Default shell: %s\n' \"\$(getent passwd '$TARGET_USER' | cut -d: -f7)\"; [ -d '$TARGET_HOME/.oh-my-zsh' ] && printf 'oh-my-zsh: installed\n' || printf 'oh-my-zsh: missing\n'; [ -d '$TARGET_HOME/.nvm' ] && printf 'nvm dir: present\n' || printf 'nvm dir: missing\n'; [ -d '$TARGET_HOME/.pyenv' ] && printf 'pyenv dir: present\n' || printf 'pyenv dir: missing\n'; zsh -lic 'command -v nvm >/dev/null 2>&1 && echo nvm: ready || echo nvm: missing; command -v pyenv >/dev/null 2>&1 && echo pyenv: ready || echo pyenv: missing; command -v fd >/dev/null 2>&1 && echo fd: ready || command -v fdfind >/dev/null 2>&1 && echo fdfind: ready || echo fd: missing'"
+}
+
+diagnose_codex_cli() {
+  log
+  log "Codex CLI diagnostics:"
+  run_target_shell_logged "Codex CLI check" "export NVM_DIR='$TARGET_HOME/.nvm'; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; command -v codex >/dev/null 2>&1 && codex --version || echo 'codex: missing'"
 }
 
 diagnose_mold() {
@@ -693,6 +737,26 @@ install_chrome() {
   esac
 }
 
+install_discord_arch() {
+  run_root_logged "Install Discord on Arch" pacman -S --needed --noconfirm discord
+}
+
+install_discord_deb() {
+  local tmpdir deb_path
+
+  tmpdir="$(mktemp -d)"
+  deb_path="${tmpdir}/discord.deb"
+  run_logged "Download Discord" curl -fL -o "$deb_path" "https://discord.com/api/download?platform=linux&format=deb"
+  run_root_logged "Install Discord" apt install -y "$deb_path"
+}
+
+install_discord() {
+  case "$PKG_FAMILY" in
+    arch) install_discord_arch ;;
+    deb) install_discord_deb ;;
+  esac
+}
+
 install_calibre_arch() {
   run_root_logged "Ensure calibre is installed on Arch" pacman -S --needed --noconfirm calibre
 }
@@ -767,6 +831,10 @@ install_shell_tooling() {
   fi
 }
 
+install_codex_cli() {
+  run_target_shell_logged "Install Codex CLI" "export NVM_DIR='$TARGET_HOME/.nvm'; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; nvm install --lts; nvm use --lts; npm install -g @openai/codex"
+}
+
 install_mold_arch() {
   run_root_logged "Ensure mold is installed on Arch" pacman -S --needed --noconfirm mold
 }
@@ -820,7 +888,7 @@ install_slippi_from_source() {
 }
 
 apply_dotfiles() {
-  run_target_shell_logged "Apply Stow packages" "cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' tmux i3 i3status bin cargo oh-my-zsh-custom applications"
+  run_target_shell_logged "Apply Stow packages" "stamp=\$(date +%Y%m%d-%H%M%S); for file in '$TARGET_HOME/.zshrc' '$TARGET_HOME/.codex/config.toml' '$TARGET_HOME/.codex/rules/default.rules'; do if [ -e \"\$file\" ] && [ ! -L \"\$file\" ]; then mv \"\$file\" \"\$file.pre-stow-\$stamp\"; fi; done; cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' tmux i3 i3status bin cargo oh-my-zsh-custom applications x zsh codex; mkdir -p '$TARGET_HOME/.config'; nvim_target='$ROOT_DIR/dotfiles/nvim'; nvim_link='$TARGET_HOME/.config/nvim'; if [ -e \"\$nvim_link\" ] || [ -L \"\$nvim_link\" ]; then current=\$(readlink -f \"\$nvim_link\" || true); if [ \"\$current\" != \"\$nvim_target\" ]; then mv \"\$nvim_link\" \"\$nvim_link.pre-stow-\$stamp\"; ln -s \"\$nvim_target\" \"\$nvim_link\"; fi; else ln -s \"\$nvim_target\" \"\$nvim_link\"; fi"
 }
 
 enable_core_services() {
@@ -948,7 +1016,7 @@ post_summary() {
   log "Bootstrap finished."
   log "- Logs: ${LOG_DIR}"
   log "- Re-login before testing Cargo's mold config or JAVA_HOME."
-  log "- In i3, the tray icons from nm-applet and blueman-applet handle clickable Wi-Fi and Bluetooth."
+  log "- In i3, nm-applet handles clickable Wi-Fi from the tray."
 }
 
 main() {
@@ -971,11 +1039,13 @@ main() {
   esac
 
   task "Install zsh, Oh My Zsh, nvm, and pyenv" install_shell_tooling diagnose_shell_tooling
+  task "Install Codex CLI" install_codex_cli diagnose_codex_cli
   task "Install OpenJDK 25" install_java diagnose_java
   task "Install mold" install_mold diagnose_mold
   task "Install Rust toolchain" install_rust diagnose_rust
   task "Build and install Slippi Launcher from source" install_slippi_from_source diagnose_slippi
   task "Install Google Chrome" install_chrome diagnose_chrome
+  task "Install Discord" install_discord diagnose_discord
   task "Install calibre" install_calibre diagnose_calibre
   task "Enable core services" enable_core_services diagnose_services
   task "Apply dotfiles with Stow" apply_dotfiles diagnose_dotfiles
