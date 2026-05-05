@@ -1,58 +1,14 @@
-! xterm*visualBell: true
-! xterm*bellSuppressTime: 100
-! xterm*VT100.Translations: #override \
-!       Ctrl Shift <KeyPress> Insert: insert-selection(CLIPBOARD) \n\
-!       Ctrl Shift <Key>V:    insert-selection(CLIPBOARD) \n\
-!       Ctrl Shift <Key>C:    copy-selection(CLIPBOARD) \n\
-!       Ctrl <Btn1Up>: exec-formatted("xdg-open '%t'", PRIMARY)
-! xterm*backarrowKeyIsErase: true
-!
-!
 ! --- UXTerm / XTerm Modern Styling ---
-! Font: Use a TrueType font for anti-aliasing
-! UXTerm*faceName: Monospace:size=11
-! UXTerm*renderFont: true
 ! ! Aesthetics: Padding and Scrollbar
-! UXTerm*internalBorder: 8
 UXTerm*scrollBar: false
 UXTerm*rightScrollBar: false
-! ! Colors: "Nordic Night" Palette
-! UXTerm*foreground: #D8DEE9
-! UXTerm*background: #2E3440
-! UXTerm*cursorColor: #88C0D0
-! ! ANSI Colors (Black, Red, Green, Yellow, Blue, Magenta, Cyan, White)
-! UXTerm*color0: #3B4252
-! UXTerm*color1: #BF616A
-! UXTerm*color2: #A3BE8C
-! UXTerm*color3: #EBCB8B
-! UXTerm*color4: #81A1C1
-! UXTerm*color5: #B48EAD
-! UXTerm*color6: #88C0D0
-! UXTerm*color7: #E5E9F0
-! ! Bright Colors
-! UXTerm*color8: #4C566A
-! UXTerm*color9: #D08770
-! UXTerm*color10: #8FBCBB
-! UXTerm*color11: #EBCB8B
-! UXTerm*color12: #5E81AC
-! UXTerm*color13: #B48EAD
-! UXTerm*color14: #8FBCBB
-! UXTerm*color15: #ECEFF4
-! ! Enable 256 colors and bold/italics
 UXTerm*termName: xterm-256color
-! UXTerm*boldMode: true
-! UXTerm*italicULMode: true
-! Clipboard
 UXTerm*selectToClipboard: true
 ! Map Ctrl+Shift+V to Paste
-UXTerm*VT100.Translations: #override \
-    Ctrl Shift <Key>V: insert-selection(CLIPBOARD) \n\
-    Ctrl Shift <Key>C: copy-selection(CLIPBOARD)
 ! --- High Contrast / Vibrant UXTerm Styling ---
-! Font Settings
-UXTerm*faceName: Monospace:size=11
-UXTerm*renderFont: true
-UXTerm*internalBorder: 25
+UXTerm*faceName: JetBrains Mono:size=11
+UXTerm*faceSize: 11
+UXTerm*internalBorder: 8
 ! Deep, Pure Background for better contrast
 UXTerm*background: #080808
 UXTerm*foreground: #FFFFFF
@@ -93,5 +49,13 @@ UXTerm*backarrowKeyIsErase: true
 *backarrowKeyIsErase: true
 UXTerm*ttyModes: erase ^?
 ! Map the backspace key to send DEL (ASCII 127)
+! --- Unified Translations (Copy/Paste + Backspace Fix) ---
 UXTerm*VT100.Translations: #override \
+    Ctrl Shift <Key>V: insert-selection(CLIPBOARD) \n\
+    Ctrl Shift <Key>C: copy-selection(CLIPBOARD) \n\
     <Key>BackSpace: string(0x7f)
+
+Xft.antialias: 1
+Xft.hinting: 1
+Xft.rgba: rgb
+Xft.lcdfilter: lcddefault
