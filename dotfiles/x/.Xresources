@@ -59,3 +59,10 @@ Xft.antialias: 1
 Xft.hinting: 1
 Xft.rgba: rgb
 Xft.lcdfilter: lcddefault
+
+! ctrl + shift + '+' font +/-
+UXTerm*VT100.translations: #override \
+  Ctrl Shift <Key>equal: larger-vt-font() \n\
+  Ctrl Shift <Key>minus: smaller-vt-font() \n\
+  Ctrl Shift <Key>0: set-vt-font(d)
+

@@ -1,5 +1,5 @@
 model = "gpt-5.5"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "xhigh"
 plan_mode_reasoning_effort = "xhigh"
 approvals_reviewer = "guardian_subagent"
 [projects."/home/david/school/CS3338-SoftwareEngineeringTools/CS3338-assignment-10"]
@@ -36,6 +36,27 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/home/david/dotfiles"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/dev.chilos.www"]
+trust_level = "trusted"
+
+[projects."/home/david"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/CS4220_Midterm_TheMealDB"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/recon/acm"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/saes"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/interactive_study"]
+trust_level = "trusted"
+
+[projects."/home/david/projects/latapin"]
 trust_level = "trusted"
 
 [tui.model_availability_nux]
