@@ -1,0 +1,3 @@
+shell-integration-features = no-cursor
+window-decoration = none
+click-repeat-interval = 200
