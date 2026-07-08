@@ -1,3 +1,4 @@
+UXTerm*loginShell: true
 ! --- UXTerm / XTerm Modern Styling ---
 ! ! Aesthetics: Padding and Scrollbar
 UXTerm*scrollBar: false

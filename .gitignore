@@ -9,3 +9,5 @@
 /dotfiles/cargo/.cargo/.package-cache-mutate
 /dotfiles/cargo/.cargo/bin/
 /dotfiles/cargo/.cargo/registry/
+/dotfiles/codex/
+/dotfiles/bin/
