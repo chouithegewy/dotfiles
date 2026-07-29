@@ -4,6 +4,7 @@ font pango:DejaVu Sans Mono 8
 
 default_border none
 default_floating_border none
+hide_edge_borders both
 for_window [all] border none
 
 exec_always dex --autostart --environment sway
