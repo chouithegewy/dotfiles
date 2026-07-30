@@ -137,9 +137,3 @@ esac
 #
 # # Dynamically set MAMBA_ROOT_PREFIX when using a pyenv miniforge environment
 export MAMBA_ROOT_PREFIX="${PYENV_ROOT:-$HOME/.pyenv}/versions/$(pyenv version-name)"
-
-# >>> grok installer >>>
-export PATH="$HOME/.grok/bin:$PATH"
-fpath=(~/.grok/completions/zsh $fpath)
-autoload -Uz compinit && compinit -C
-# <<< grok installer <<<

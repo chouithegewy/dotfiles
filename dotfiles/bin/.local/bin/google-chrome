@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Dynamically determine the display server platform.
+# We check if WAYLAND_DISPLAY is set AND the Wayland socket file actually exists.
+ozone_flag="--ozone-platform=x11"
+if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+  wayland_socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY"
+  if [[ -S "$wayland_socket" ]]; then
+    ozone_flag="--ozone-platform=wayland"
+  fi
+fi
+
+flags_file="${XDG_CONFIG_HOME:-$HOME/.config}/chrome-flags.conf"
+flags=("$ozone_flag")
+if [[ -r "$flags_file" ]]; then
+  while IFS= read -r flag; do
+    [[ -z "$flag" || "$flag" == \#* ]] && continue
+    # Ignore any conflicting ozone platform configuration from the config file.
+    [[ "$flag" == --ozone-platform* ]] && continue
+    flags+=("$flag")
+  done < "$flags_file"
+fi
+
+printf 'Launching Google Chrome with the following flags:\n'
+for flag in "${flags[@]}"; do
+    printf '  %s\n' "$flag"
+done
+
+if [[ "$ozone_flag" == "--ozone-platform=wayland" ]]; then
+  exec /opt/google/chrome/google-chrome "${flags[@]}" "$@"
+else
+  # On X11, unset WAYLAND_DISPLAY to avoid issues with stale env vars
+  exec env -u WAYLAND_DISPLAY /opt/google/chrome/google-chrome "${flags[@]}" "$@"
+fi

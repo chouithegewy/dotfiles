@@ -33,20 +33,21 @@ ARCH_COMMON_PACKAGES=(
   curl
   dbus
   dex
-  dmenu
   eza
   fd
   git
   github-cli
   gimp
-  i3-wm
-  i3lock
+  sway
+  swaybg
+  swayidle
+  swaylock
   i3status
   jq
   libpulse
   libreoffice-fresh
   lm_sensors
-  maim
+  grim
   mold
   neovim
   network-manager-applet
@@ -65,15 +66,10 @@ ARCH_COMMON_PACKAGES=(
   unzip
   vlc
   wget
-  xclip
+  slurp
+  wl-clipboard
   xdg-desktop-portal
-  xdg-desktop-portal-xapp
-  xorg-server
-  xorg-xinit
-  xorg-xrandr
-  xorg-xsetroot
-  xss-lock
-  xterm
+  xdg-desktop-portal-wlr
   zsh
   zip
 )
@@ -89,20 +85,21 @@ DEB_COMMON_PACKAGES=(
   curl
   dbus-user-session
   dex
-  dmenu
   eza
   fd-find
   gh
   git
   gimp
   gnupg
-  i3-wm
-  i3lock
+  sway
+  swaybg
+  swayidle
+  swaylock
   i3status
   jq
   libreoffice
   lm-sensors
-  maim
+  grim
   neovim
   network-manager
   network-manager-gnome
@@ -119,12 +116,10 @@ DEB_COMMON_PACKAGES=(
   unzip
   vlc
   wget
-  xclip
+  slurp
+  wl-clipboard
   xdg-desktop-portal
-  xdg-desktop-portal-xapp
-  xorg
-  xss-lock
-  xterm
+  xdg-desktop-portal-wlr
   zsh
   zip
 )
@@ -895,7 +890,7 @@ install_slippi_from_source() {
 }
 
 apply_dotfiles() {
-  run_target_shell_logged "Apply Stow packages" "stamp=\$(date +%Y%m%d-%H%M%S); mkdir -p '$TARGET_HOME/.config'; for file in '$TARGET_HOME/.tmux.conf' '$TARGET_HOME/.gitconfig' '$TARGET_HOME/.inputrc' '$TARGET_HOME/.zshrc' '$TARGET_HOME/.Xresources' '$TARGET_HOME/.xinitrc' '$TARGET_HOME/.codex/config.toml' '$TARGET_HOME/.codex/rules/default.rules' '$TARGET_HOME/.config/btop/btop.conf' '$TARGET_HOME/.config/chrome-flags.conf' '$TARGET_HOME/.config/gh/config.yml' '$TARGET_HOME/.config/ghostty/config.ghostty' '$TARGET_HOME/.config/i3/config' '$TARGET_HOME/.config/i3status/config' '$TARGET_HOME/.config/mimeapps.list' '$TARGET_HOME/.config/xdg-desktop-portal/portals.conf'; do if [ -e \"\$file\" ] && [ ! -L \"\$file\" ]; then mv \"\$file\" \"\$file.pre-stow-\$stamp\"; fi; done; cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' tmux i3 i3status bin cargo oh-my-zsh-custom applications x zsh codex btop chrome gh ghostty git inputrc xdg-desktop-portal; nvim_target='$ROOT_DIR/dotfiles/nvim'; nvim_link='$TARGET_HOME/.config/nvim'; if [ -e \"\$nvim_link\" ] || [ -L \"\$nvim_link\" ]; then current=\$(readlink -f \"\$nvim_link\" || true); if [ \"\$current\" != \"\$nvim_target\" ]; then mv \"\$nvim_link\" \"\$nvim_link.pre-stow-\$stamp\"; ln -s \"\$nvim_target\" \"\$nvim_link\"; fi; else ln -s \"\$nvim_target\" \"\$nvim_link\"; fi"
+  run_target_shell_logged "Apply Stow packages" "stamp=\$(date +%Y%m%d-%H%M%S); mkdir -p '$TARGET_HOME/.config'; for file in '$TARGET_HOME/.tmux.conf' '$TARGET_HOME/.gitconfig' '$TARGET_HOME/.inputrc' '$TARGET_HOME/.zshrc' '$TARGET_HOME/.codex/config.toml' '$TARGET_HOME/.codex/rules/default.rules' '$TARGET_HOME/.config/btop/btop.conf' '$TARGET_HOME/.config/chrome-flags.conf' '$TARGET_HOME/.config/gh/config.yml' '$TARGET_HOME/.config/ghostty/config.ghostty' '$TARGET_HOME/.config/i3status/config' '$TARGET_HOME/.config/sway/config' '$TARGET_HOME/.config/mimeapps.list' '$TARGET_HOME/.config/xdg-desktop-portal/portals.conf'; do if [ -e \"\$file\" ] && [ ! -L \"\$file\" ]; then mv \"\$file\" \"\$file.pre-stow-\$stamp\"; fi; done; cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' sway i3status bin cargo oh-my-zsh-custom applications zsh codex btop chrome gh ghostty git inputrc xdg-desktop-portal; nvim_target='$ROOT_DIR/dotfiles/nvim'; nvim_link='$TARGET_HOME/.config/nvim'; if [ -e \"\$nvim_link\" ] || [ -L \"\$nvim_link\" ]; then current=\$(readlink -f \"\$nvim_link\" || true); if [ \"\$current\" != \"\$nvim_target\" ]; then mv \"\$nvim_link\" \"\$nvim_link.pre-stow-\$stamp\"; ln -s \"\$nvim_target\" \"\$nvim_link\"; fi; else ln -s \"\$nvim_target\" \"\$nvim_link\"; fi"
 }
 
 enable_core_services() {
@@ -1023,7 +1018,7 @@ post_summary() {
   log "Bootstrap finished."
   log "- Logs: ${LOG_DIR}"
   log "- Re-login before testing Cargo's mold config or JAVA_HOME."
-  log "- In i3, nm-applet handles clickable Wi-Fi from the tray."
+  log "- In Sway, nm-applet handles clickable Wi-Fi."
 }
 
 main() {

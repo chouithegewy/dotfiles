@@ -15,6 +15,7 @@ exec systemctl --user import-environment WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DE
 bindsym $mod+Return exec ghostty
 bindsym $mod+Shift+q kill
 bindsym $mod+d exec rofi -show drun
+bindsym Mod4+l exec swaylock --color 000000
 bindsym Mod4+Shift+s exec "mkdir -p /home/david/Pictures/screenshots && grim -g \"`slurp`\" - | tee \"`date +'/home/david/Pictures/screenshots/%Y-%m-%d_%H-%M-%S.png'`\" | wl-copy --type image/png"
 bindsym $mod+f fullscreen toggle
 bindsym $mod+Shift+space floating toggle
