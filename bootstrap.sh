@@ -50,7 +50,6 @@ ARCH_COMMON_PACKAGES=(
   lm_sensors
   grim
   mold
-  neovim
   network-manager-applet
   networkmanager
   nushell
@@ -101,7 +100,6 @@ DEB_COMMON_PACKAGES=(
   libreoffice
   lm-sensors
   grim
-  neovim
   network-manager
   network-manager-gnome
   obs-studio
@@ -133,6 +131,24 @@ MOLD_BUILD_DEPS=(
   ninja-build
   pkg-config
   zlib1g-dev
+)
+
+NEOVIM_ARCH_BUILD_DEPS=(
+  cmake
+  gettext
+  ninja
+  unzip
+)
+
+NEOVIM_DEB_BUILD_DEPS=(
+  autoconf
+  automake
+  cmake
+  gettext
+  libtool
+  ninja-build
+  pkg-config
+  unzip
 )
 
 PYENV_DEB_BUILD_DEPS=(
@@ -632,6 +648,16 @@ diagnose_mold() {
   run_target_shell_logged "Cargo mold config" "if [ -f '$TARGET_HOME/.cargo/config.toml' ]; then sed -n '1,120p' '$TARGET_HOME/.cargo/config.toml'; fi"
 }
 
+diagnose_neovim() {
+  log
+  log "Neovim diagnostics:"
+  command -v nvim >/dev/null 2>&1 && nvim --version | head -n1 || log "nvim: missing"
+  if [ -d "$TARGET_HOME/.local/src/neovim/.git" ]; then
+    log "- Source directory: $TARGET_HOME/.local/src/neovim"
+    git -C "$TARGET_HOME/.local/src/neovim" describe --tags --always 2>/dev/null || true
+  fi
+}
+
 diagnose_services() {
   log
   log "Service diagnostics:"
@@ -899,6 +925,21 @@ install_mold() {
     arch) install_mold_arch ;;
     deb) install_mold_deb ;;
   esac
+}
+
+install_neovim_from_source() {
+  case "$PKG_FAMILY" in
+    arch)
+      run_root_logged "Install Neovim build dependencies" pacman -S --needed --noconfirm "${NEOVIM_ARCH_BUILD_DEPS[@]}"
+      ;;
+    deb)
+      run_root_logged "Install Neovim build dependencies" apt-get install -y "${NEOVIM_DEB_BUILD_DEPS[@]}"
+      ;;
+  esac
+
+  run_target_shell_logged "Clone or update Neovim source" "mkdir -p '$TARGET_HOME/.local/src'; if [ -d '$TARGET_HOME/.local/src/neovim/.git' ]; then git -C '$TARGET_HOME/.local/src/neovim' fetch --tags origin; git -C '$TARGET_HOME/.local/src/neovim' checkout --force stable; git -C '$TARGET_HOME/.local/src/neovim' reset --hard origin/stable; else git clone --branch stable --depth 1 https://github.com/neovim/neovim.git '$TARGET_HOME/.local/src/neovim'; fi"
+  run_target_shell_logged "Build Neovim from source" "cd '$TARGET_HOME/.local/src/neovim'; make distclean >/dev/null 2>&1 || true; make CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local -j\$(nproc)"
+  run_root_logged "Install Neovim from source" bash -lc "cd '$TARGET_HOME/.local/src/neovim' && make install"
 }
 
 install_slippi_from_source() {
@@ -1221,6 +1262,7 @@ main() {
   task "Install zsh, Oh My Zsh, nvm, and pyenv" install_shell_tooling diagnose_shell_tooling
   task "Install Codex CLI" install_codex_cli diagnose_codex_cli
   task "Install OpenJDK 25" install_java diagnose_java
+  task "Build and install Neovim from source" install_neovim_from_source diagnose_neovim
   task "Install mold" install_mold diagnose_mold
   task "Install Rust toolchain" install_rust diagnose_rust
   task "Build and install Slippi Launcher from source" install_slippi_from_source diagnose_slippi
