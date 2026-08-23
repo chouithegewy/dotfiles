@@ -1,4 +1,4 @@
 [submodule "dotfiles/nvim"]
 	path = dotfiles/nvim
-	url = git@github.com:chouithegewy/nvim.git
+	url = https://github.com/chouithegewy/nvim.git
 	branch = main

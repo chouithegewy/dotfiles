@@ -12,7 +12,7 @@ exec nm-applet
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP=sway
 exec systemctl --user import-environment WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP
 
-bindsym $mod+Return exec ghostty
+bindsym $mod+Return exec foot
 bindsym $mod+Shift+q kill
 bindsym $mod+d exec rofi -show drun
 bindsym Mod4+l exec swaylock --color 000000
@@ -72,7 +72,7 @@ bindsym $mod+Shift+9 move container to workspace number $ws9
 bindsym $mod+Shift+0 move container to workspace number $ws10
 
 bar {
-    status_command i3status
+    swaybar_command waybar
 }
 
 input type:keyboard {

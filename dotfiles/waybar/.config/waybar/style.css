@@ -1,0 +1,74 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "DejaVu Sans Mono", "Noto Color Emoji";
+    font-size: 8pt;
+    min-height: 0;
+}
+
+window#waybar {
+    background: #000000;
+    color: #ffffff;
+}
+
+#workspaces button {
+    padding: 0 6px;
+    background: #222222;
+    color: #888888;
+}
+
+#workspaces button.focused {
+    background: #285577;
+    color: #ffffff;
+}
+
+#workspaces button.urgent {
+    background: #900000;
+    color: #ffffff;
+}
+
+#mode,
+#temperature,
+#cpu,
+#memory,
+#disk,
+#network,
+#battery,
+#power-profiles-daemon,
+#clock,
+#tray {
+    padding: 0 6px;
+}
+
+#power-profiles-daemon.performance {
+    background: #8b1a1a;
+}
+
+#power-profiles-daemon.balanced {
+    background: #285577;
+}
+
+#power-profiles-daemon.power-saver {
+    background: #2f6b3a;
+}
+
+#battery.warning,
+#temperature.warning {
+    color: #f0c674;
+}
+
+#battery.critical,
+#temperature.critical,
+#network.disconnected {
+    color: #ff6b6b;
+}
+
+tooltip {
+    background: #111111;
+    border: 1px solid #666666;
+}
+
+tooltip label {
+    color: #ffffff;
+    padding: 4px;
+}

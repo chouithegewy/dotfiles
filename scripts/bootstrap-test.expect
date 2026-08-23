@@ -39,8 +39,8 @@ expect {
     send -- "y\r"
     exp_continue
   }
-  -re {Continue configuring hibernation anyway\? \[Y/n\] \[Y\]: $} {
-    send -- "n\r"
+  -re {Create or resize .* for hibernation\? \[Y/n\] \[Y\]: $} {
+    send -- "y\r"
     exp_continue
   }
   -re {Choose retry, skip, diagnose, or abort \[r/s/d/a\] \[r\]: $} {

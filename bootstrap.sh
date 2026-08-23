@@ -18,7 +18,9 @@ IS_LAPTOP=0
 SWAP_NAME=""
 SWAP_TYPE=""
 SWAP_SIZE_BYTES=0
+SWAP_REQUIRED_BYTES=0
 MEM_TOTAL_BYTES=0
+HIBERNATE_REBOOT_REQUIRED=0
 
 ARCH_COMMON_PACKAGES=(
   acpi
@@ -42,7 +44,6 @@ ARCH_COMMON_PACKAGES=(
   swaybg
   swayidle
   swaylock
-  i3status
   jq
   libpulse
   libreoffice-fresh
@@ -65,6 +66,7 @@ ARCH_COMMON_PACKAGES=(
   tmux
   unzip
   vlc
+  waybar
   wget
   slurp
   wl-clipboard
@@ -95,7 +97,6 @@ DEB_COMMON_PACKAGES=(
   swaybg
   swayidle
   swaylock
-  i3status
   jq
   libreoffice
   lm-sensors
@@ -115,6 +116,7 @@ DEB_COMMON_PACKAGES=(
   tmux
   unzip
   vlc
+  waybar
   wget
   slurp
   wl-clipboard
@@ -435,18 +437,30 @@ detect_swap() {
     SWAP_NAME=""
     SWAP_TYPE=""
     SWAP_SIZE_BYTES=0
+    SWAP_REQUIRED_BYTES=0
     MEM_TOTAL_BYTES=0
     return
   fi
 
   MEM_TOTAL_BYTES="$(( $(awk '/MemTotal:/ { print $2 }' /proc/meminfo) * 1024 ))"
+  local gib=$((1024 * 1024 * 1024))
+  local memory_gib=$(( (MEM_TOTAL_BYTES + gib - 1) / gib ))
+  local required_gib=$(( ((memory_gib + 3) / 4) * 4 ))
+  SWAP_REQUIRED_BYTES=$((required_gib * gib))
+
+  SWAP_NAME=""
+  SWAP_TYPE=""
+  SWAP_SIZE_BYTES=0
 
   if command -v swapon >/dev/null 2>&1; then
-    local line
-    line="$(swapon --show=NAME,TYPE,SIZE --bytes --noheadings | head -n1 || true)"
-    if [ -n "$line" ]; then
-      read -r SWAP_NAME SWAP_TYPE SWAP_SIZE_BYTES <<<"$line"
-    fi
+    local name type size
+    while read -r name type size; do
+      if [ -n "$name" ] && [ "${size:-0}" -gt "$SWAP_SIZE_BYTES" ]; then
+        SWAP_NAME="$name"
+        SWAP_TYPE="$type"
+        SWAP_SIZE_BYTES="$size"
+      fi
+    done < <(swapon --show=NAME,TYPE,SIZE --bytes --noheadings || true)
   fi
 }
 
@@ -476,8 +490,12 @@ print_summary() {
 
   if [ -n "$SWAP_NAME" ]; then
     log "Swap: ${SWAP_NAME} (${SWAP_TYPE}, $(human_bytes "$SWAP_SIZE_BYTES"))"
+    if [ "$SWAP_SIZE_BYTES" -lt "$MEM_TOTAL_BYTES" ]; then
+      log "Hibernation swap needed: $(human_bytes "$SWAP_REQUIRED_BYTES")"
+    fi
   else
     log "Swap: none detected"
+    log "Hibernation swap needed: $(human_bytes "$SWAP_REQUIRED_BYTES")"
   fi
 }
 
@@ -548,7 +566,7 @@ diagnose_packages() {
 diagnose_dotfiles() {
   log
   log "Stow diagnostics:"
-  run_target_shell_logged "List dotfile packages" "cd '$ROOT_DIR/dotfiles' && find . -maxdepth 2 -type f | sort"
+  run_target_shell_logged "List dotfile packages" "cd '$ROOT_DIR/dotfiles' && find . -maxdepth 3 \( -type f -o -type l \) | sort; printf 'Neovim submodule: '; git -C '$ROOT_DIR' submodule status -- dotfiles/nvim || true; printf 'Neovim target: '; readlink -f '$TARGET_HOME/.config/nvim' || true"
 }
 
 diagnose_java() {
@@ -624,6 +642,7 @@ diagnose_hibernate() {
   log
   log "Hibernate diagnostics:"
   log "- Memory: $(human_bytes "$MEM_TOTAL_BYTES")"
+  log "- Required hibernation swap: $(human_bytes "$SWAP_REQUIRED_BYTES")"
   if [ -n "$SWAP_NAME" ]; then
     log "- Swap: ${SWAP_NAME} (${SWAP_TYPE}, $(human_bytes "$SWAP_SIZE_BYTES"))"
   else
@@ -631,6 +650,10 @@ diagnose_hibernate() {
   fi
   log "- Kernel cmdline:"
   cat /proc/cmdline
+  log "- Kernel sleep states: $(cat /sys/power/state 2>/dev/null || echo unavailable)"
+  if command -v mokutil >/dev/null 2>&1; then
+    log "- $(mokutil --sb-state 2>/dev/null || echo 'Secure Boot state unavailable')"
+  fi
   log "- Known boot targets:"
   [ -f /etc/default/grub ] && log "  * /etc/default/grub"
   [ -d /boot/loader/entries ] && log "  * /boot/loader/entries"
@@ -890,7 +913,8 @@ install_slippi_from_source() {
 }
 
 apply_dotfiles() {
-  run_target_shell_logged "Apply Stow packages" "stamp=\$(date +%Y%m%d-%H%M%S); mkdir -p '$TARGET_HOME/.config'; for file in '$TARGET_HOME/.tmux.conf' '$TARGET_HOME/.gitconfig' '$TARGET_HOME/.inputrc' '$TARGET_HOME/.zshrc' '$TARGET_HOME/.codex/config.toml' '$TARGET_HOME/.codex/rules/default.rules' '$TARGET_HOME/.config/btop/btop.conf' '$TARGET_HOME/.config/chrome-flags.conf' '$TARGET_HOME/.config/gh/config.yml' '$TARGET_HOME/.config/ghostty/config.ghostty' '$TARGET_HOME/.config/i3status/config' '$TARGET_HOME/.config/sway/config' '$TARGET_HOME/.config/mimeapps.list' '$TARGET_HOME/.config/xdg-desktop-portal/portals.conf'; do if [ -e \"\$file\" ] && [ ! -L \"\$file\" ]; then mv \"\$file\" \"\$file.pre-stow-\$stamp\"; fi; done; cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' sway i3status bin cargo oh-my-zsh-custom applications zsh codex btop chrome gh ghostty git inputrc xdg-desktop-portal; nvim_target='$ROOT_DIR/dotfiles/nvim'; nvim_link='$TARGET_HOME/.config/nvim'; if [ -e \"\$nvim_link\" ] || [ -L \"\$nvim_link\" ]; then current=\$(readlink -f \"\$nvim_link\" || true); if [ \"\$current\" != \"\$nvim_target\" ]; then mv \"\$nvim_link\" \"\$nvim_link.pre-stow-\$stamp\"; ln -s \"\$nvim_target\" \"\$nvim_link\"; fi; else ln -s \"\$nvim_target\" \"\$nvim_link\"; fi"
+  run_target_shell_logged "Initialize dotfile submodules" "git -C '$ROOT_DIR' submodule sync --recursive && git -C '$ROOT_DIR' submodule update --init --recursive"
+  run_target_shell_logged "Apply Stow packages" "set -e; nvim_target='$ROOT_DIR/dotfiles/nvim'; if ! find \"\$nvim_target\" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then echo 'Neovim submodule is empty.' >&2; exit 1; fi; stamp=\$(date +%Y%m%d-%H%M%S); mkdir -p '$TARGET_HOME/.config'; for file in '$TARGET_HOME/.tmux.conf' '$TARGET_HOME/.gitconfig' '$TARGET_HOME/.inputrc' '$TARGET_HOME/.zshrc' '$TARGET_HOME/.codex/config.toml' '$TARGET_HOME/.codex/rules/default.rules' '$TARGET_HOME/.config/btop/btop.conf' '$TARGET_HOME/.config/chrome-flags.conf' '$TARGET_HOME/.config/gh/config.yml' '$TARGET_HOME/.config/ghostty/config.ghostty' '$TARGET_HOME/.config/i3status/config' '$TARGET_HOME/.config/sway/config' '$TARGET_HOME/.config/waybar/config.jsonc' '$TARGET_HOME/.config/waybar/style.css' '$TARGET_HOME/.config/mimeapps.list' '$TARGET_HOME/.config/xdg-desktop-portal/portals.conf'; do if [ -e \"\$file\" ] && [ ! -L \"\$file\" ]; then mv \"\$file\" \"\$file.pre-stow-\$stamp\"; fi; done; cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' tmux sway waybar bin cargo oh-my-zsh-custom applications zsh codex btop chrome gh ghostty git inputrc xdg-desktop-portal; nvim_link='$TARGET_HOME/.config/nvim'; if [ -e \"\$nvim_link\" ] || [ -L \"\$nvim_link\" ]; then current=\$(readlink -f \"\$nvim_link\" || true); if [ \"\$current\" != \"\$nvim_target\" ]; then mv \"\$nvim_link\" \"\$nvim_link.pre-stow-\$stamp\"; ln -s \"\$nvim_target\" \"\$nvim_link\"; fi; else ln -s \"\$nvim_target\" \"\$nvim_link\"; fi"
 }
 
 enable_core_services() {
@@ -922,29 +946,165 @@ configure_laptop_power() {
   run_target_shell_logged "Set a battery-friendly default profile" "$TARGET_HOME/.local/bin/power-mode-auto || true"
 }
 
-resume_uuid_from_swap() {
+ensure_swap_fstab_entry() {
+  local swap_file="$1"
+  local fstab_tmp
+
+  fstab_tmp="$(mktemp)"
+  awk -v swap_file="$swap_file" '
+    $1 == swap_file && $3 == "swap" {
+      if (!done) {
+        print swap_file " none swap sw 0 0"
+        done = 1
+      }
+      next
+    }
+    { print }
+    END {
+      if (!done) {
+        print swap_file " none swap sw 0 0"
+      }
+    }
+  ' /etc/fstab >"$fstab_tmp"
+  run_root_logged "Register ${swap_file} in /etc/fstab" install -m 0644 "$fstab_tmp" /etc/fstab
+  rm -f "$fstab_tmp"
+}
+
+ensure_hibernation_swap() {
+  local swap_file filesystem available_bytes additional_bytes
+
+  if [ "$SWAP_SIZE_BYTES" -ge "$MEM_TOTAL_BYTES" ]; then
+    return 0
+  fi
+
+  if [ "$SWAP_TYPE" = "file" ]; then
+    swap_file="$SWAP_NAME"
+    additional_bytes=$((SWAP_REQUIRED_BYTES - SWAP_SIZE_BYTES))
+  else
+    swap_file="/swapfile"
+    additional_bytes="$SWAP_REQUIRED_BYTES"
+  fi
+
+  if ! confirm_yes "Create or resize ${swap_file} to $(human_bytes "$SWAP_REQUIRED_BYTES") for hibernation?"; then
+    return 1
+  fi
+
+  filesystem="$(findmnt -no FSTYPE -T "$(dirname "$swap_file")" | head -n1)"
+  case "$filesystem" in
+    ext2|ext3|ext4|xfs)
+      ;;
+    *)
+      die "Automatic swap-file provisioning is not supported on ${filesystem:-this filesystem}. Create a $(human_bytes "$SWAP_REQUIRED_BYTES") swap partition or file, then rerun the step."
+      ;;
+  esac
+
+  available_bytes="$(df -B1 --output=avail "$(dirname "$swap_file")" | tail -n1 | tr -d '[:space:]')"
+  if [ "$available_bytes" -lt "$additional_bytes" ]; then
+    die "Not enough free disk space for ${swap_file}: need $(human_bytes "$additional_bytes"), have $(human_bytes "$available_bytes")."
+  fi
+
+  if swapon --show=NAME --noheadings | awk '{$1=$1; print}' | grep -Fxq "$swap_file"; then
+    run_root_logged "Disable undersized swap ${swap_file}" swapoff "$swap_file"
+  fi
+  run_root_logged "Allocate $(human_bytes "$SWAP_REQUIRED_BYTES") for ${swap_file}" fallocate -l "$SWAP_REQUIRED_BYTES" "$swap_file"
+  run_root_logged "Secure ${swap_file}" chmod 0600 "$swap_file"
+  run_root_logged "Format ${swap_file}" mkswap "$swap_file"
+  run_root_logged "Enable ${swap_file}" swapon "$swap_file"
+  ensure_swap_fstab_entry "$swap_file"
+
+  detect_swap
+  if [ "$SWAP_SIZE_BYTES" -lt "$MEM_TOTAL_BYTES" ]; then
+    die "The largest active swap is still too small for hibernation."
+  fi
+}
+
+resume_parameters_from_swap() {
+  local resume_device resume_uuid resume_offset page_size
+
   [ -n "$SWAP_NAME" ] || return 1
-  [ "$SWAP_TYPE" = "partition" ] || return 1
-  blkid -s UUID -o value "$SWAP_NAME"
+  case "$SWAP_TYPE" in
+    partition)
+      resume_device="$SWAP_NAME"
+      if [ "$EUID" -eq 0 ]; then
+        resume_uuid="$(blkid -s UUID -o value "$resume_device" 2>/dev/null || true)"
+      else
+        resume_uuid="$(sudo blkid -s UUID -o value "$resume_device" 2>/dev/null || true)"
+      fi
+      ;;
+    file)
+      resume_device="$(findmnt -no SOURCE -T "$SWAP_NAME" | head -n1)"
+      resume_uuid="$(findmnt -no UUID -T "$SWAP_NAME" | head -n1)"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  [ -n "$resume_device" ] || return 1
+  [ -n "$resume_uuid" ] || return 1
+
+  if [ "$SWAP_TYPE" = "partition" ]; then
+    printf 'resume=UUID=%s' "$resume_uuid"
+    return 0
+  fi
+
+  page_size="$(getconf PAGESIZE)"
+  if [ "$EUID" -eq 0 ]; then
+    resume_offset="$(filefrag -b"$page_size" -v "$SWAP_NAME" 2>/dev/null | awk '$1 == "0:" { split($4, blocks, "."); print blocks[1]; exit }')"
+  else
+    resume_offset="$(sudo filefrag -b"$page_size" -v "$SWAP_NAME" 2>/dev/null | awk '$1 == "0:" { split($4, blocks, "."); print blocks[1]; exit }')"
+  fi
+  [ -n "$resume_offset" ] || return 1
+  printf 'resume=UUID=%s resume_offset=%s' "$resume_uuid" "$resume_offset"
+}
+
+configure_hibernate_policy() {
+  local policy_dir policy_file policy_tmp
+
+  [ "$PKG_FAMILY" = "deb" ] || return 0
+
+  policy_dir="/etc/polkit-1/rules.d"
+  policy_file="${policy_dir}/10-enable-hibernate.rules"
+  policy_tmp="$(mktemp)"
+  cat >"$policy_tmp" <<'EOF'
+// Ubuntu denies hibernation in com.ubuntu.desktop.rules. This earlier rule
+// enables it only for an active, local administrator session.
+polkit.addRule(function(action, subject) {
+    var hibernateActions = [
+        "org.freedesktop.upower.hibernate",
+        "org.freedesktop.login1.hibernate",
+        "org.freedesktop.login1.handle-hibernate-key",
+        "org.freedesktop.login1.hibernate-multiple-sessions"
+    ];
+
+    if (hibernateActions.indexOf(action.id) >= 0 &&
+        subject.active && subject.local && subject.isInGroup("sudo")) {
+        return polkit.Result.YES;
+    }
+});
+EOF
+  run_root_logged "Create ${policy_dir}" mkdir -p "$policy_dir"
+  run_root_logged "Install ${policy_file}" install -m 0644 "$policy_tmp" "$policy_file"
+  rm -f "$policy_tmp"
 }
 
 configure_hibernate() {
   local resume_uuid resume_arg logind_tmp logind_dir logind_file
 
   [ "$IS_LAPTOP" -eq 1 ] || return 0
-  [ -n "$SWAP_NAME" ] || die "No swap detected. Hibernation needs swap."
-  [ "$SWAP_TYPE" = "partition" ] || die "Only swap partitions are handled automatically right now. Detected: ${SWAP_TYPE}"
-
-  if [ "$SWAP_SIZE_BYTES" -lt "$MEM_TOTAL_BYTES" ]; then
-    warn "Swap is smaller than RAM. Hibernation may fail."
-    if ! confirm_yes "Continue configuring hibernation anyway?"; then
-      return 1
+  if ! grep -qw disk /sys/power/state 2>/dev/null; then
+    warn "The running kernel does not expose the 'disk' sleep state, so hibernation cannot be enabled yet."
+    if command -v mokutil >/dev/null 2>&1 && mokutil --sb-state 2>/dev/null | grep -qi enabled; then
+      warn "Secure Boot is enabled. Ubuntu kernel lockdown disables hibernation; disable Secure Boot validation and reboot before retrying this step."
     fi
+    return 1
   fi
+  ensure_hibernation_swap
 
-  resume_uuid="$(resume_uuid_from_swap)"
-  [ -n "$resume_uuid" ] || return 1
-  resume_arg="resume=UUID=${resume_uuid}"
+  resume_arg="$(resume_parameters_from_swap)"
+  [ -n "$resume_arg" ] || die "Could not determine resume parameters for ${SWAP_NAME}."
+  resume_uuid="${resume_arg#resume=UUID=}"
+  resume_uuid="${resume_uuid%% *}"
 
   logind_dir="/etc/systemd/logind.conf.d"
   logind_file="${logind_dir}/99-lid-switch.conf"
@@ -958,6 +1118,8 @@ EOF
   run_root_logged "Create ${logind_dir}" mkdir -p "$logind_dir"
   run_root_logged "Install ${logind_file}" install -m 0644 "$logind_tmp" "$logind_file"
   rm -f "$logind_tmp"
+
+  configure_hibernate_policy
 
   case "$PKG_FAMILY" in
     arch)
@@ -993,7 +1155,8 @@ EOF
     warn "No supported bootloader config was found. Resume kernel arg was not persisted."
   fi
 
-  run_root_logged "Restart systemd-logind" systemctl restart systemd-logind
+  HIBERNATE_REBOOT_REQUIRED=1
+  log "Hibernation configuration updated. Reboot before testing hibernation or lid-close behavior."
 }
 
 maybe_laptop_tasks() {
@@ -1005,11 +1168,6 @@ maybe_laptop_tasks() {
 
   task "Configure laptop power defaults" configure_laptop_power diagnose_services
 
-  if [ -z "$SWAP_NAME" ]; then
-    warn "No swap detected. The hibernate-on-lid-close step will be skipped."
-    return 0
-  fi
-
   task "Configure hibernate on lid close" configure_hibernate diagnose_hibernate
 }
 
@@ -1019,15 +1177,35 @@ post_summary() {
   log "- Logs: ${LOG_DIR}"
   log "- Re-login before testing Cargo's mold config or JAVA_HOME."
   log "- In Sway, nm-applet handles clickable Wi-Fi."
+  if [ "$HIBERNATE_REBOOT_REQUIRED" -eq 1 ]; then
+    log "- Reboot before testing hibernation or lid-close behavior."
+  fi
 }
 
 main() {
+  local mode="${1:-all}"
+
+  case "$mode" in
+    all|--hibernate-only)
+      ;;
+    *)
+      die "Usage: $0 [--hibernate-only]"
+      ;;
+  esac
+
   require_linux
   detect_container
   detect_distro
   detect_laptop
   detect_swap
   print_summary
+
+  if [ "$mode" = "--hibernate-only" ]; then
+    [ "$IS_LAPTOP" -eq 1 ] || die "Hibernation setup is only offered on a detected laptop."
+    task "Configure hibernate on lid close" configure_hibernate diagnose_hibernate
+    post_summary
+    return
+  fi
 
   case "$PKG_FAMILY" in
     arch)
@@ -1055,4 +1233,6 @@ main() {
   post_summary
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
