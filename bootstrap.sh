@@ -1155,7 +1155,7 @@ configure_hibernate() {
   cat >"$logind_tmp" <<'EOF'
 [Login]
 HandleLidSwitch=hibernate
-HandleLidSwitchExternalPower=hibernate
+HandleLidSwitchExternalPower=lock
 HandleLidSwitchDocked=ignore
 EOF
   run_root_logged "Create ${logind_dir}" mkdir -p "$logind_dir"

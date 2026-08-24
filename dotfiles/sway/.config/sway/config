@@ -9,6 +9,9 @@ for_window [all] border none
 
 exec_always dex --autostart --environment sway
 exec nm-applet
+exec_always swayidle -w \
+  lock 'swaylock --color 000000' \
+  before-sleep 'swaylock --color 000000'
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP=sway
 exec systemctl --user import-environment WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP
 
