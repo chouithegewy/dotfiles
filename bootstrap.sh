@@ -54,6 +54,7 @@ ARCH_COMMON_PACKAGES=(
   networkmanager
   nushell
   obs-studio
+  pavucontrol
   polkit-gnome
   power-profiles-daemon
   psmisc
@@ -103,6 +104,7 @@ DEB_COMMON_PACKAGES=(
   network-manager
   network-manager-gnome
   obs-studio
+  pavucontrol
   policykit-1-gnome
   power-profiles-daemon
   psmisc
@@ -632,13 +634,13 @@ diagnose_shell_tooling() {
   log
   log "Shell tooling diagnostics:"
   command -v zsh >/dev/null 2>&1 && zsh --version || true
-  run_target_shell_logged "Shell runtime check" "printf 'Default shell: %s\n' \"\$(getent passwd '$TARGET_USER' | cut -d: -f7)\"; [ -d '$TARGET_HOME/.oh-my-zsh' ] && printf 'oh-my-zsh: installed\n' || printf 'oh-my-zsh: missing\n'; [ -d '$TARGET_HOME/.nvm' ] && printf 'nvm dir: present\n' || printf 'nvm dir: missing\n'; [ -d '$TARGET_HOME/.pyenv' ] && printf 'pyenv dir: present\n' || printf 'pyenv dir: missing\n'; zsh -lic 'command -v nvm >/dev/null 2>&1 && echo nvm: ready || echo nvm: missing; command -v pyenv >/dev/null 2>&1 && echo pyenv: ready || echo pyenv: missing; command -v fd >/dev/null 2>&1 && echo fd: ready || command -v fdfind >/dev/null 2>&1 && echo fdfind: ready || echo fd: missing'"
+  run_target_shell_logged "Shell runtime check" "printf 'Default shell: %s\n' \"\$(getent passwd '$TARGET_USER' | cut -d: -f7)\"; [ -d '$TARGET_HOME/.oh-my-zsh' ] && printf 'oh-my-zsh: installed\n' || printf 'oh-my-zsh: missing\n'; [ -d '$TARGET_HOME/.local/share/pnpm' ] && printf 'pnpm dir: present\n' || printf 'pnpm dir: missing\n'; [ -d '$TARGET_HOME/.pyenv' ] && printf 'pyenv dir: present\n' || printf 'pyenv dir: missing\n'; zsh -lic 'command -v pnpm >/dev/null 2>&1 && echo pnpm: ready || echo pnpm: missing; command -v node >/dev/null 2>&1 && echo node: ready || echo node: missing; command -v pyenv >/dev/null 2>&1 && echo pyenv: ready || echo pyenv: missing; command -v fd >/dev/null 2>&1 && echo fd: ready || command -v fdfind >/dev/null 2>&1 && echo fdfind: ready || echo fd: missing'"
 }
 
 diagnose_codex_cli() {
   log
   log "Codex CLI diagnostics:"
-  run_target_shell_logged "Codex CLI check" "export NVM_DIR='$TARGET_HOME/.nvm'; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; command -v codex >/dev/null 2>&1 && codex --version || echo 'codex: missing'"
+  run_target_shell_logged "Codex CLI check" "export PNPM_HOME='$TARGET_HOME/.local/share/pnpm'; export PATH=\"\$PNPM_HOME:\$PNPM_HOME/bin:\$PATH\"; command -v codex >/dev/null 2>&1 && codex --version || echo 'codex: missing'"
 }
 
 diagnose_mold() {
@@ -871,11 +873,11 @@ install_shell_tooling() {
     fi
   fi
 
-  if [ ! -d "${TARGET_HOME}/.nvm" ]; then
-    run_target_shell_logged "Install nvm" "PROFILE=/dev/null bash -lc 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash'"
+  if [ ! -d "${TARGET_HOME}/.local/share/pnpm" ]; then
+    run_target_shell_logged "Install pnpm" "curl -fsSL https://get.pnpm.io/install.sh | sh -"
   fi
 
-  run_target_shell_logged "Install latest Node LTS via nvm" "export NVM_DIR='$TARGET_HOME/.nvm'; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; nvm install --lts; nvm alias default 'lts/*'"
+  run_target_shell_logged "Install latest Node LTS and npm via pnpm" "export PNPM_HOME='$TARGET_HOME/.local/share/pnpm'; export PATH=\"\$PNPM_HOME:\$PNPM_HOME/bin:\$PATH\"; pnpm runtime set node lts -g; pnpm add -g npm"
 
   if [ ! -d "${TARGET_HOME}/.pyenv" ]; then
     run_target_shell_logged "Install pyenv" "curl -fsSL https://pyenv.run | bash"
@@ -883,7 +885,7 @@ install_shell_tooling() {
 }
 
 install_codex_cli() {
-  run_target_shell_logged "Install Codex CLI" "export NVM_DIR='$TARGET_HOME/.nvm'; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; nvm install --lts; nvm use --lts; npm install -g @openai/codex"
+  run_target_shell_logged "Install Codex CLI" "export PNPM_HOME='$TARGET_HOME/.local/share/pnpm'; export PATH=\"\$PNPM_HOME:\$PNPM_HOME/bin:\$PATH\"; pnpm add -g @openai/codex"
 }
 
 install_mold_arch() {
@@ -949,7 +951,7 @@ install_slippi_from_source() {
   [ -f "$custom_env" ] || die "Missing zsh custom environment file: ${custom_env}"
 
   run_target_shell_logged "Clone or update Slippi Launcher source" "mkdir -p '$TARGET_HOME/.local/src'; if [ -d '$TARGET_HOME/.local/src/slippi-launcher/.git' ]; then git -C '$TARGET_HOME/.local/src/slippi-launcher' pull --ff-only; else git clone https://github.com/project-slippi/slippi-launcher.git '$TARGET_HOME/.local/src/slippi-launcher'; fi"
-  run_target_shell_logged "Build Slippi Launcher from source" "export NVM_DIR='$TARGET_HOME/.nvm'; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; nvm install --lts; nvm use --lts; cd '$TARGET_HOME/.local/src/slippi-launcher'; npm install; npm run package"
+  run_target_shell_logged "Build Slippi Launcher from source" "export PNPM_HOME='$TARGET_HOME/.local/share/pnpm'; export PATH=\"\$PNPM_HOME:\$PNPM_HOME/bin:\$PATH\"; cd '$TARGET_HOME/.local/src/slippi-launcher'; npm install; npm run package"
   run_target_shell_logged "Install Slippi Launcher into ~/.local/opt" "set -e; src='$TARGET_HOME/.local/src/slippi-launcher/release/build'; dest='$TARGET_HOME/.local/opt/slippi-launcher'; rm -rf \"\$dest/current\"; mkdir -p \"\$dest\" '$TARGET_HOME/.local/share/icons/hicolor/512x512/apps'; if [ -d \"\$src/linux-unpacked\" ]; then cp -a \"\$src/linux-unpacked\" \"\$dest/current\"; elif appimage=\$(find \"\$src\" -maxdepth 1 -type f -name '*.AppImage' | head -n1); [ -n \"\${appimage:-}\" ]; then mkdir -p \"\$dest/current\"; cp -a \"\$appimage\" \"\$dest/current/slippi-launcher.AppImage\"; chmod +x \"\$dest/current/slippi-launcher.AppImage\"; else echo 'No installable Slippi build artifact found.' >&2; exit 1; fi; if [ -f '$TARGET_HOME/.local/src/slippi-launcher/assets/icons/512x512.png' ]; then cp -f '$TARGET_HOME/.local/src/slippi-launcher/assets/icons/512x512.png' '$TARGET_HOME/.local/share/icons/hicolor/512x512/apps/slippi-launcher.png'; fi"
 }
 
@@ -1259,7 +1261,7 @@ main() {
       ;;
   esac
 
-  task "Install zsh, Oh My Zsh, nvm, and pyenv" install_shell_tooling diagnose_shell_tooling
+  task "Install zsh, Oh My Zsh, pnpm, and pyenv" install_shell_tooling diagnose_shell_tooling
   task "Install Codex CLI" install_codex_cli diagnose_codex_cli
   task "Install OpenJDK 25" install_java diagnose_java
   task "Build and install Neovim from source" install_neovim_from_source diagnose_neovim

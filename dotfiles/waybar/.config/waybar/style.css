@@ -34,10 +34,15 @@ window#waybar {
 #disk,
 #network,
 #battery,
+#pulseaudio,
 #power-profiles-daemon,
 #clock,
 #tray {
     padding: 0 6px;
+}
+
+#pulseaudio.muted {
+    background: #8b1a1a;
 }
 
 #power-profiles-daemon.performance {

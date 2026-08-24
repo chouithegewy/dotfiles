@@ -39,14 +39,15 @@ In this repo the Stow packages are under `dotfiles/`, and the bootstrap applies 
 
 - Your current `~/.tmux.conf` is managed by Stow, with the local mouse and clipboard settings plus copy-mode bindings for the system clipboard.
 - The Sway config uses Super as the modifier, Ghostty as the terminal, Rofi as the launcher, and Waybar for the bar.
-- `zsh`, Oh My Zsh, `nvm`, and `pyenv` are installed together, with `~/.zshrc` and Oh My Zsh custom init managed by Stow.
-- Codex CLI is installed with npm through `nvm`; `~/.codex/config.toml` and `~/.codex/rules/default.rules` are managed by Stow, while auth, logs, history, sessions, and caches stay untracked.
+- `zsh`, Oh My Zsh, `pnpm`, and `pyenv` are installed together, with `~/.zshrc` and Oh My Zsh custom init managed by Stow. Node.js itself is installed and managed via `pnpm runtime set node lts -g` (no `nvm`); `pnpm add -g npm` makes `npm` available for third-party projects that expect it.
+- Codex CLI is installed globally with `pnpm add -g @openai/codex`; `~/.codex/config.toml` and `~/.codex/rules/default.rules` are managed by Stow, while auth, logs, history, sessions, and caches stay untracked.
 - `~/.config/chrome-flags.conf`, Ghostty, Git, GitHub CLI non-auth config, btop, `~/.inputrc`, `~/.config/mimeapps.list`, and desktop portal preferences are managed by Stow. GitHub CLI hosts/auth files, browser profiles, cookies, tokens, and generated app state are intentionally not tracked.
 - The Stow-managed `google-chrome` and `google-chrome-stable` launchers load `~/.config/chrome-flags.conf` and select native Wayland when a Wayland socket is available.
 - `ripgrep` and `fd` are installed; on Debian/Ubuntu the shell aliases `fd` to `fdfind`.
 - Slippi Launcher is built from source into `~/.local/src/slippi-launcher` and installed under `~/.local/opt/slippi-launcher`.
 - Desktop applications include Thunar, GIMP, Discord, LibreOffice, VLC, OBS Studio, Google Chrome, calibre, and Slippi Launcher.
 - Wi-Fi stays clickable through `nm-applet` under Sway. Waybar shows the active power profile, cycles profiles on click, and displays the selected profile and driver on hover.
+- Waybar shows volume and mute state via PipeWire's `wpctl`; scroll to adjust, left-click to toggle mute, right-click to open `pavucontrol` for per-app sliders and input/output device selection. `XF86AudioRaiseVolume`/`LowerVolume`/`Mute`/`MicMute` are bound in the Sway config (working even while locked) and also drive `wpctl`.
 - On Debian/Ubuntu, Java 25 is installed from Eclipse Temurin and Google Chrome is installed from Google's `.deb`.
 - The Rust Stow package enables `mold` for common Linux Rust targets via Cargo config.
 - `system/etc/` currently captures the local Arch `fstab`, `mkinitcpio.conf`, locale, console/X keyboard settings, valid login shells, and `pcspkr` blacklist for reference. Review those files before applying them to another machine because they include machine-specific boot and device settings.

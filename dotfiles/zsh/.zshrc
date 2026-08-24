@@ -105,9 +105,6 @@ fi
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 alias vim="nvim"
 bindkey -v
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
 
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
@@ -128,10 +125,10 @@ export PATH="/home/david/.local/bin:$PATH"
 export PATH="/home/david/.pixi/bin:$PATH"
 
 # pnpm
-export PNPM_HOME="/home/david/.local/share/pnpm"
+export PNPM_HOME="$HOME/.local/share/pnpm"
 case ":$PATH:" in
-  *":$PNPM_HOME/bin:"*) ;;
-  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PNPM_HOME/bin:$PATH" ;;
 esac
 # pnpm end
 #
@@ -145,3 +142,4 @@ autoload -Uz compinit && compinit -C
 # <<< grok installer <<<
 export LIBCLANG_PATH="/home/chilos/.rustup/toolchains/esp/xtensa-esp32-elf-clang/esp-20.1.1_20250829/esp-clang/lib"
 export PATH="/home/chilos/.rustup/toolchains/esp/xtensa-esp-elf/esp-15.2.0_20250920/xtensa-esp-elf/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
