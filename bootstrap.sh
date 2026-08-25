@@ -5,7 +5,8 @@ ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="${ROOT_DIR}/.bootstrap-logs/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$LOG_DIR"
 
-TARGET_USER="${SUDO_USER:-$USER}"
+# $USER is not set in a bare container shell, which would trip `set -u`.
+TARGET_USER="${SUDO_USER:-${USER:-$(id -un)}}"
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
 CURRENT_LOG="${LOG_DIR}/bootstrap.log"
 
@@ -22,107 +23,166 @@ SWAP_REQUIRED_BYTES=0
 MEM_TOTAL_BYTES=0
 HIBERNATE_REBOOT_REQUIRED=0
 
-ARCH_COMMON_PACKAGES=(
-  acpi
+ASSUME_YES=0
+FORCE_REBUILD=0
+LIST_ONLY=0
+SELECTED_TASKS=()
+SELECTED_MATCHED=()
+KNOWN_TASKS=()
+
+# ESP32-S3 is an Xtensa part, so it needs Espressif's Rust fork.
+ESP32_TARGETS="esp32s3"
+
+# Lid close suspends first, then hibernates after this long, on AC and battery
+# alike. Suspending first keeps a quick lid-open resume; hibernating after
+# keeps a closed laptop from draining the battery flat.
+HIBERNATE_DELAY="3min"
+
+# Image used by --test. Default is the latest non-LTS Ubuntu release, which
+# surfaces breakage from newer toolchains first; --lts pins the current LTS.
+TEST_IMAGE="ubuntu:rolling"
+
+# When set, a failing task is recorded and the run continues, so one --test
+# pass reports every broken task instead of stopping at the first.
+KEEP_GOING=0
+FAILED_TASKS=()
+
+# Profile selection. "all" runs everything (the historical behaviour); "min"
+# runs only MIN_TASKS, plus whichever extras were explicitly enabled.
+PROFILE="all"
+EXTRAS_ALL=0
+SELECTED_EXTRAS=()
+
+# The minimum needed for a working Neovim setup and the desktop it runs in.
+# Everything else is an extra: codex, java, esp32, slippi, discord, calibre,
+# the extra package list, and the laptop power/hibernate tasks.
+MIN_TASKS=(
+  pkg-refresh
+  packages
+  shell-tooling
+  rust
+  mold
+  tree-sitter
+  neovim
+  chrome
+  services
+  dotfiles
+)
+
+# The "min" profile: everything a working Neovim setup needs, plus the desktop
+# it runs on. Anything not required for that lives in the *_EXTRA_PACKAGES list
+# and is installed only when extras are enabled.
+ARCH_MIN_PACKAGES=(
   base-devel
-  blueman
-  bluez
-  bluez-utils
   brightnessctl
-  btop
   ca-certificates
-  calibre
+  clang
   curl
   dbus
   dex
   eza
   fd
   git
-  github-cli
-  gimp
-  sway
-  swaybg
-  swayidle
-  swaylock
+  grim
   jq
   libpulse
-  libreoffice-fresh
-  lm_sensors
-  grim
   mold
   network-manager-applet
   networkmanager
-  nushell
-  obs-studio
   pavucontrol
   polkit-gnome
-  power-profiles-daemon
   psmisc
   ripgrep
   rofi
   rustup
+  slurp
   stow
-  thunar
+  sway
+  swaybg
+  swayidle
+  swaylock
   tmux
   unzip
-  vlc
   waybar
   wget
-  slurp
+  wireplumber
   wl-clipboard
   xdg-desktop-portal
   xdg-desktop-portal-wlr
   zsh
+)
+
+ARCH_EXTRA_PACKAGES=(
+  acpi
+  blueman
+  bluez
+  bluez-utils
+  btop
+  calibre
+  gimp
+  github-cli
+  libreoffice-fresh
+  lm_sensors
+  nushell
+  obs-studio
+  power-profiles-daemon
+  thunar
+  vlc
   zip
 )
 
-DEB_COMMON_PACKAGES=(
-  acpi
-  bluez
-  blueman
+DEB_MIN_PACKAGES=(
   brightnessctl
-  btop
   build-essential
   ca-certificates
+  clang
   curl
   dbus-user-session
   dex
   eza
   fd-find
-  gh
   git
-  gimp
   gnupg
-  sway
-  swaybg
-  swayidle
-  swaylock
-  jq
-  libreoffice
-  lm-sensors
   grim
+  jq
   network-manager
   network-manager-gnome
-  obs-studio
   pavucontrol
   policykit-1-gnome
-  power-profiles-daemon
   psmisc
   pulseaudio-utils
   ripgrep
   rofi
+  slurp
   stow
-  thunar
+  sway
+  swaybg
+  swayidle
+  swaylock
   tmux
   unzip
-  vlc
   waybar
   wget
-  slurp
+  wireplumber
   wl-clipboard
   xdg-desktop-portal
   xdg-desktop-portal-wlr
   zsh
+)
+
+DEB_EXTRA_PACKAGES=(
+  acpi
+  blueman
+  bluez
+  btop
+  gh
+  gimp
+  libreoffice
+  lm-sensors
+  obs-studio
+  power-profiles-daemon
+  thunar
+  vlc
   zip
 )
 
@@ -151,6 +211,15 @@ NEOVIM_DEB_BUILD_DEPS=(
   ninja-build
   pkg-config
   unzip
+)
+
+TREE_SITTER_DEB_BUILD_DEPS=(
+  clang
+  libclang-dev
+)
+
+TREE_SITTER_ARCH_BUILD_DEPS=(
+  clang
 )
 
 PYENV_DEB_BUILD_DEPS=(
@@ -216,6 +285,12 @@ prompt() {
 confirm_yes() {
   local message="$1"
   local answer
+
+  if [ "$ASSUME_YES" -eq 1 ]; then
+    log "${message} [Y/n]: y (assumed via -y)"
+    return 0
+  fi
+
   answer="$(prompt "${message} [Y/n]" "Y")"
   case "${answer,,}" in
     y|yes|"") return 0 ;;
@@ -318,7 +393,15 @@ ensure_grub_kernel_arg() {
     current="${current#\"}"
   fi
 
-  current="$(printf '%s' "$current" | sed -E 's/(^| )resume=[^ ]+//g; s/(^| )resume_offset=[^ ]+//g; s/  +/ /g; s/^ //; s/ $//')"
+  case " $current " in
+    *" ${arg} "*) return 0 ;;
+  esac
+
+  case "$arg" in
+    resume=*)
+      current="$(printf '%s' "$current" | sed -E 's/(^| )resume=[^ ]+//g; s/(^| )resume_offset=[^ ]+//g; s/  +/ /g; s/^ //; s/ $//')"
+      ;;
+  esac
   current="${current:+${current} }${arg}"
   quoted="\"${current}\""
 
@@ -353,12 +436,15 @@ ensure_loader_entry_arg() {
 
   file="$entry"
   tmp="$(mktemp)"
-  awk -v arg="$arg" '
+  awk -v arg="$arg" -v is_resume="$(case "$arg" in resume=*) echo 1;; *) echo 0;; esac)" '
     BEGIN { done = 0 }
     /^options[[:space:]]+/ {
       line = $0
-      sub(/(^| )resume=[^ ]+/, "", line)
-      sub(/(^| )resume_offset=[^ ]+/, "", line)
+      if (index(" " line " ", " " arg " ")) { print; done = 1; next }
+      if (is_resume) {
+        sub(/(^| )resume=[^ ]+/, "", line)
+        sub(/(^| )resume_offset=[^ ]+/, "", line)
+      }
       gsub(/[[:space:]]+/, " ", line)
       sub(/[[:space:]]+$/, "", line)
       print line " " arg
@@ -517,11 +603,140 @@ print_summary() {
   fi
 }
 
+# --- already-installed detection -------------------------------------------
+# Path-based on purpose: these run as root under sudo, so probing $PATH would
+# inspect root's environment rather than the target user's.
+#
+# Tasks without a check here always run; pkg-refresh, packages, dotfiles,
+# services and the laptop tasks are all idempotent re-runs by design.
+
+check_codex_installed() {
+  [ -x "$TARGET_HOME/.local/share/pnpm/bin/codex" ]
+}
+
+check_tree_sitter_installed() {
+  [ -x "$TARGET_HOME/.cargo/bin/tree-sitter" ]
+}
+
+check_rust_installed() {
+  [ -x "$TARGET_HOME/.cargo/bin/rustup" ]
+}
+
+check_esp32_installed() {
+  [ -x "$TARGET_HOME/.cargo/bin/espup" ] &&
+    [ -x "$TARGET_HOME/.cargo/bin/espflash" ] &&
+    [ -d "$TARGET_HOME/.rustup/toolchains/esp" ]
+}
+
+check_shell_tooling_installed() {
+  [ -d "$TARGET_HOME/.oh-my-zsh" ] &&
+    [ -d "$TARGET_HOME/.local/share/pnpm" ] &&
+    [ -d "$TARGET_HOME/.pyenv" ]
+}
+
+check_neovim_installed() {
+  command -v nvim >/dev/null 2>&1
+}
+
+check_mold_installed() {
+  command -v mold >/dev/null 2>&1
+}
+
+check_java_installed() {
+  command -v java >/dev/null 2>&1
+}
+
+check_chrome_installed() {
+  command -v google-chrome-stable >/dev/null 2>&1 || command -v google-chrome >/dev/null 2>&1
+}
+
+check_discord_installed() {
+  command -v discord >/dev/null 2>&1
+}
+
+check_calibre_installed() {
+  command -v calibre >/dev/null 2>&1
+}
+
+check_slippi_installed() {
+  [ -x "$TARGET_HOME/.local/bin/slippi-launcher" ]
+}
+
+task_in_profile() {
+  local name="$1"
+  local entry
+
+  [ "$PROFILE" = "all" ] && return 0
+
+  for entry in "${MIN_TASKS[@]}"; do
+    [ "$entry" = "$name" ] && return 0
+  done
+
+  # Not a min task, so it is an extra: run it only if extras were requested.
+  [ "$EXTRAS_ALL" -eq 1 ] && return 0
+
+  for entry in ${SELECTED_EXTRAS[@]+"${SELECTED_EXTRAS[@]}"}; do
+    [ "$entry" = "$name" ] && return 0
+  done
+
+  return 1
+}
+
+task_selected() {
+  local name="$1"
+  local sel
+
+  [ "${#SELECTED_TASKS[@]}" -eq 0 ] && return 0
+
+  for sel in "${SELECTED_TASKS[@]}"; do
+    if [ "$sel" = "$name" ]; then
+      SELECTED_MATCHED+=("$name")
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# Tasks opt into "already installed" detection by defining a
+# check_<name>_installed function; anything without one always runs.
+task_is_installed() {
+  local name="$1"
+  local fn="check_${name//-/_}_installed"
+
+  declare -F "$fn" >/dev/null 2>&1 || return 1
+  "$fn"
+}
+
 task() {
-  local label="$1"
-  local run_fn="$2"
-  local diag_fn="$3"
+  local name="$1"
+  local label="$2"
+  local run_fn="$3"
+  local diag_fn="$4"
   local choice
+
+  KNOWN_TASKS+=("$name")
+
+  if [ "$LIST_ONLY" -eq 0 ]; then
+    task_in_profile "$name" || return 0
+  fi
+  task_selected "$name" || return 0
+
+  if [ "$LIST_ONLY" -eq 1 ]; then
+    local tag="extra"
+    local entry
+    for entry in "${MIN_TASKS[@]}"; do
+      [ "$entry" = "$name" ] && tag="min" && break
+    done
+    printf '  %-16s %-6s %s\n' "$name" "$tag" "$label"
+    return 0
+  fi
+
+  if [ "$FORCE_REBUILD" -eq 0 ] && task_is_installed "$name"; then
+    log
+    log "Already installed: ${label} (pass -f to rebuild)"
+    return 0
+  fi
 
   if ! confirm_yes "Run step '${label}'?"; then
     log "Skipped: ${label}"
@@ -540,6 +755,19 @@ task() {
 
     warn "Step failed: ${label}"
     warn "Log: ${CURRENT_LOG}"
+
+    if [ "$KEEP_GOING" -eq 1 ]; then
+      "$diag_fn" || true
+      FAILED_TASKS+=("${name}: ${label} (log: ${CURRENT_LOG})")
+      warn "Continuing after failure: ${label}"
+      return 0
+    fi
+
+    if [ "$ASSUME_YES" -eq 1 ] || [ ! -t 0 ]; then
+      "$diag_fn" || true
+      die "Aborted during ${label} (non-interactive; rerun on a terminal to retry)"
+    fi
+
     choice="$(prompt "Choose retry, skip, diagnose, or abort [r/s/d/a]" "r")"
 
     case "${choice,,}" in
@@ -630,6 +858,19 @@ diagnose_rust() {
   run_target_shell_logged "Rust toolchain check" "command -v rustup >/dev/null 2>&1 && rustup show || true"
 }
 
+diagnose_tree_sitter_cli() {
+  log
+  log "tree-sitter CLI diagnostics:"
+  run_target_shell_logged "tree-sitter check" "source '$TARGET_HOME/.cargo/env' 2>/dev/null || true; command -v tree-sitter >/dev/null 2>&1 && tree-sitter --version || echo 'tree-sitter: missing'"
+}
+
+diagnose_esp32_tooling() {
+  log
+  log "ESP32 tooling diagnostics:"
+  run_target_shell_logged "ESP toolchain check" "source '$TARGET_HOME/.cargo/env' 2>/dev/null || true; for c in espup espflash cargo-espflash esp-generate probe-rs; do if command -v \$c >/dev/null 2>&1; then printf '%s: ready\n' \"\$c\"; else printf '%s: missing\n' \"\$c\"; fi; done; rustup toolchain list 2>/dev/null | grep -q '^esp' && echo 'esp rust toolchain: present' || echo 'esp rust toolchain: missing'"
+  [ -f /etc/udev/rules.d/99-esp32.rules ] && log "- ESP32 udev rule: present" || log "- ESP32 udev rule: missing"
+}
+
 diagnose_shell_tooling() {
   log
   log "Shell tooling diagnostics:"
@@ -664,6 +905,7 @@ diagnose_services() {
   log
   log "Service diagnostics:"
   run_root_logged "Systemctl status summary" systemctl --no-pager --full status NetworkManager bluetooth power-profiles-daemon || true
+  [ -f /etc/udev/rules.d/99-power-profile-ac.rules ] && log "- Power-profile AC udev rule: present" || log "- Power-profile AC udev rule: missing"
 }
 
 diagnose_hibernate() {
@@ -679,6 +921,27 @@ diagnose_hibernate() {
   log "- Kernel cmdline:"
   cat /proc/cmdline
   log "- Kernel sleep states: $(cat /sys/power/state 2>/dev/null || echo unavailable)"
+  log "- Lid switch init state: $(cat /sys/module/button/parameters/lid_init_state 2>/dev/null || echo unavailable)"
+
+  # Report what logind is *actually* using, not just what is on disk: logind
+  # caches config at startup, so an un-reloaded drop-in silently does nothing.
+  if command -v busctl >/dev/null 2>&1; then
+    local prop
+    for prop in HandleLidSwitch HandleLidSwitchExternalPower HandleLidSwitchDocked; do
+      log "- Live ${prop}: $(busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager "$prop" 2>/dev/null || echo unavailable)"
+    done
+    log "- CanSuspendThenHibernate: $(busctl call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager CanSuspendThenHibernate 2>/dev/null || echo unavailable)"
+  fi
+  log "- Configured hibernate delay: $(systemd-analyze cat-config systemd/sleep.conf 2>/dev/null | grep -i '^HibernateDelaySec=' | tail -n1 || echo 'unset (systemd default)')"
+
+  local blocker
+  blocker="$(systemd-inhibit --list 2>/dev/null | grep -i "handle-lid-switch" || true)"
+  if [ -n "$blocker" ]; then
+    log "- Lid switch inhibitors present:"
+    printf '%s\n' "$blocker"
+  else
+    log "- Lid switch inhibitors: none"
+  fi
   if command -v mokutil >/dev/null 2>&1; then
     log "- $(mokutil --sb-state 2>/dev/null || echo 'Secure Boot state unavailable')"
   fi
@@ -702,11 +965,19 @@ refresh_deb() {
 }
 
 install_common_arch() {
-  run_root_logged "Install Arch base packages" pacman -S --needed --noconfirm "${ARCH_COMMON_PACKAGES[@]}"
+  run_root_logged "Install Arch base packages" pacman -S --needed --noconfirm "${ARCH_MIN_PACKAGES[@]}"
+}
+
+install_extra_arch() {
+  run_root_logged "Install Arch extra packages" pacman -S --needed --noconfirm "${ARCH_EXTRA_PACKAGES[@]}"
 }
 
 install_common_deb() {
-  run_root_logged "Install Debian/Ubuntu base packages" apt-get install -y "${DEB_COMMON_PACKAGES[@]}"
+  run_root_logged "Install Debian/Ubuntu base packages" apt-get install -y "${DEB_MIN_PACKAGES[@]}"
+}
+
+install_extra_deb() {
+  run_root_logged "Install Debian/Ubuntu extra packages" apt-get install -y "${DEB_EXTRA_PACKAGES[@]}"
 }
 
 ensure_aur_helper() {
@@ -842,6 +1113,52 @@ install_rust() {
   esac
 }
 
+install_tree_sitter_cli() {
+  case "$PKG_FAMILY" in
+    arch)
+      run_root_logged "Install tree-sitter build dependencies" pacman -S --needed --noconfirm "${TREE_SITTER_ARCH_BUILD_DEPS[@]}"
+      ;;
+    deb)
+      run_root_logged "Install tree-sitter build dependencies" apt-get install -y "${TREE_SITTER_DEB_BUILD_DEPS[@]}"
+      ;;
+  esac
+
+  # nvim-treesitter's "main" branch dropped vendored parser sources and shells
+  # out to the tree-sitter CLI to generate them, so the CLI is a hard
+  # requirement for the Neovim config rather than an optional extra.
+  #
+  # LIBCLANG_PATH is unset for the build on purpose: the ESP-IDF Rust toolchain
+  # exports a cross-compiler libclang whose resource directory does not resolve
+  # (empty InstalledDir), which makes bindgen fail to find stdbool.h while
+  # building tree-sitter-cli's dependencies.
+  run_target_shell_logged "Install tree-sitter CLI" "source '$TARGET_HOME/.cargo/env' 2>/dev/null || true; env -u LIBCLANG_PATH cargo install tree-sitter-cli --locked"
+}
+
+install_esp32_tooling() {
+  local rule_tmp
+
+  # ESP32-S3 is an Xtensa core, which upstream Rust cannot target, so espup
+  # installs Espressif's Rust fork along with the matching esp-clang and
+  # writes ~/export-esp.sh holding the env that toolchain needs.
+  #
+  # LIBCLANG_PATH is unset for every cargo install here for the same reason as
+  # in install_tree_sitter_cli: once espup has run, the shell exports a
+  # cross-compiler libclang that breaks bindgen for host builds.
+  run_target_shell_logged "Install espup" "source '$TARGET_HOME/.cargo/env' 2>/dev/null || true; env -u LIBCLANG_PATH cargo install espup --locked"
+  run_target_shell_logged "Install ESP Rust toolchain for ${ESP32_TARGETS}" "source '$TARGET_HOME/.cargo/env' 2>/dev/null || true; espup install --targets '${ESP32_TARGETS}'"
+  run_target_shell_logged "Install ESP flash and debug tooling" "source '$TARGET_HOME/.cargo/env' 2>/dev/null || true; env -u LIBCLANG_PATH cargo install espflash cargo-espflash esp-generate probe-rs-tools --locked"
+
+  rule_tmp="$(mktemp)"
+  cat >"$rule_tmp" <<'EOF'
+# Espressif USB-JTAG/serial bridge on ESP32-S3. The uaccess tag hands the
+# device to the active seat's user, so no dialout membership is required.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", GROUP="plugdev", MODE="0660", TAG+="uaccess"
+EOF
+  run_root_logged "Install ESP32 udev rule" install -m 0644 "$rule_tmp" /etc/udev/rules.d/99-esp32.rules
+  rm -f "$rule_tmp"
+  run_root_logged "Reload udev rules" udevadm control --reload-rules
+}
+
 install_shell_tooling_arch() {
   run_root_logged "Install pyenv build dependencies on Arch" pacman -S --needed --noconfirm "${PYENV_ARCH_BUILD_DEPS[@]}"
 }
@@ -957,7 +1274,7 @@ install_slippi_from_source() {
 
 apply_dotfiles() {
   run_target_shell_logged "Initialize dotfile submodules" "git -C '$ROOT_DIR' submodule sync --recursive && git -C '$ROOT_DIR' submodule update --init --recursive"
-  run_target_shell_logged "Apply Stow packages" "set -e; nvim_target='$ROOT_DIR/dotfiles/nvim'; if ! find \"\$nvim_target\" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then echo 'Neovim submodule is empty.' >&2; exit 1; fi; stamp=\$(date +%Y%m%d-%H%M%S); mkdir -p '$TARGET_HOME/.config'; for file in '$TARGET_HOME/.tmux.conf' '$TARGET_HOME/.gitconfig' '$TARGET_HOME/.inputrc' '$TARGET_HOME/.zshrc' '$TARGET_HOME/.codex/config.toml' '$TARGET_HOME/.codex/rules/default.rules' '$TARGET_HOME/.config/btop/btop.conf' '$TARGET_HOME/.config/chrome-flags.conf' '$TARGET_HOME/.config/gh/config.yml' '$TARGET_HOME/.config/ghostty/config.ghostty' '$TARGET_HOME/.config/i3status/config' '$TARGET_HOME/.config/sway/config' '$TARGET_HOME/.config/waybar/config.jsonc' '$TARGET_HOME/.config/waybar/style.css' '$TARGET_HOME/.config/mimeapps.list' '$TARGET_HOME/.config/xdg-desktop-portal/portals.conf'; do if [ -e \"\$file\" ] && [ ! -L \"\$file\" ]; then mv \"\$file\" \"\$file.pre-stow-\$stamp\"; fi; done; cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' tmux sway waybar bin cargo oh-my-zsh-custom applications zsh codex btop chrome gh ghostty git inputrc xdg-desktop-portal; nvim_link='$TARGET_HOME/.config/nvim'; if [ -e \"\$nvim_link\" ] || [ -L \"\$nvim_link\" ]; then current=\$(readlink -f \"\$nvim_link\" || true); if [ \"\$current\" != \"\$nvim_target\" ]; then mv \"\$nvim_link\" \"\$nvim_link.pre-stow-\$stamp\"; ln -s \"\$nvim_target\" \"\$nvim_link\"; fi; else ln -s \"\$nvim_target\" \"\$nvim_link\"; fi"
+  run_target_shell_logged "Apply Stow packages" "set -e; nvim_target='$ROOT_DIR/dotfiles/nvim'; if ! find \"\$nvim_target\" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then echo 'Neovim submodule is empty.' >&2; exit 1; fi; stamp=\$(date +%Y%m%d-%H%M%S); mkdir -p '$TARGET_HOME/.config'; for file in '$TARGET_HOME/.tmux.conf' '$TARGET_HOME/.gitconfig' '$TARGET_HOME/.inputrc' '$TARGET_HOME/.zshrc' '$TARGET_HOME/.codex/config.toml' '$TARGET_HOME/.codex/rules/default.rules' '$TARGET_HOME/.config/btop/btop.conf' '$TARGET_HOME/.config/chrome-flags.conf' '$TARGET_HOME/.config/gh/config.yml' '$TARGET_HOME/.config/ghostty/config.ghostty' '$TARGET_HOME/.config/i3status/config' '$TARGET_HOME/.config/sway/config' '$TARGET_HOME/.config/waybar/config.jsonc' '$TARGET_HOME/.config/waybar/style.css' '$TARGET_HOME/.config/mimeapps.list' '$TARGET_HOME/.config/xdg-desktop-portal/portals.conf'; do if [ -e \"\$file\" ] && [ ! -L \"\$file\" ]; then real=\$(readlink -f \"\$file\" 2>/dev/null || true); case \"\$real\" in '$ROOT_DIR'/*) ;; *) mv \"\$file\" \"\$file.pre-stow-\$stamp\" ;; esac; fi; done; cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' tmux sway waybar bin cargo oh-my-zsh-custom applications zsh codex btop chrome gh ghostty git inputrc xdg-desktop-portal; nvim_link='$TARGET_HOME/.config/nvim'; if [ -e \"\$nvim_link\" ] || [ -L \"\$nvim_link\" ]; then current=\$(readlink -f \"\$nvim_link\" || true); if [ \"\$current\" != \"\$nvim_target\" ]; then mv \"\$nvim_link\" \"\$nvim_link.pre-stow-\$stamp\"; ln -s \"\$nvim_target\" \"\$nvim_link\"; fi; else ln -s \"\$nvim_target\" \"\$nvim_link\"; fi"
 }
 
 enable_core_services() {
@@ -980,6 +1297,23 @@ enable_core_services() {
   esac
 }
 
+configure_power_profile_autoswitch() {
+  local rule_file rule_tmp
+
+  rule_file="/etc/udev/rules.d/99-power-profile-ac.rules"
+  rule_tmp="$(mktemp)"
+  cat >"$rule_tmp" <<EOF
+# Re-run power-mode-auto whenever AC status changes, so the active power
+# profile follows the charger instead of only being set once at login.
+ACTION=="change", SUBSYSTEM=="power_supply", KERNEL=="AC*", RUN+="${TARGET_HOME}/.local/bin/power-mode-auto"
+ACTION=="change", SUBSYSTEM=="power_supply", KERNEL=="ADP*", RUN+="${TARGET_HOME}/.local/bin/power-mode-auto"
+EOF
+  run_root_logged "Install power-profile AC udev rule" install -m 0644 "$rule_tmp" "$rule_file"
+  rm -f "$rule_tmp"
+  run_root_logged "Reload udev rules" udevadm control --reload-rules
+  run_root_logged "Re-evaluate power supply state" udevadm trigger --subsystem-match=power_supply
+}
+
 configure_laptop_power() {
   [ "$IS_LAPTOP" -eq 1 ] || return 0
 
@@ -987,6 +1321,7 @@ configure_laptop_power() {
   run_root_logged "Enable Bluetooth" systemctl enable --now bluetooth
   run_root_logged "Enable power-profiles-daemon" systemctl enable --now power-profiles-daemon
   run_target_shell_logged "Set a battery-friendly default profile" "$TARGET_HOME/.local/bin/power-mode-auto || true"
+  configure_power_profile_autoswitch
 }
 
 ensure_swap_fstab_entry() {
@@ -1133,11 +1468,14 @@ EOF
 
 configure_hibernate() {
   local resume_uuid resume_arg logind_tmp logind_dir logind_file
+  local sleep_tmp sleep_dir sleep_file
 
   [ "$IS_LAPTOP" -eq 1 ] || return 0
   if ! grep -qw disk /sys/power/state 2>/dev/null; then
     warn "The running kernel does not expose the 'disk' sleep state, so hibernation cannot be enabled yet."
-    if command -v mokutil >/dev/null 2>&1 && mokutil --sb-state 2>/dev/null | grep -qi enabled; then
+    local sb_state
+    sb_state="$(mokutil --sb-state 2>/dev/null || true)"
+    if [ -n "$sb_state" ] && [ "${sb_state#*[Ee]nabled}" != "$sb_state" ]; then
       warn "Secure Boot is enabled. Ubuntu kernel lockdown disables hibernation; disable Secure Boot validation and reboot before retrying this step."
     fi
     return 1
@@ -1154,13 +1492,31 @@ configure_hibernate() {
   logind_tmp="$(mktemp)"
   cat >"$logind_tmp" <<'EOF'
 [Login]
-HandleLidSwitch=hibernate
-HandleLidSwitchExternalPower=lock
+HandleLidSwitch=suspend-then-hibernate
+HandleLidSwitchExternalPower=suspend-then-hibernate
 HandleLidSwitchDocked=ignore
 EOF
   run_root_logged "Create ${logind_dir}" mkdir -p "$logind_dir"
   run_root_logged "Install ${logind_file}" install -m 0644 "$logind_tmp" "$logind_file"
   rm -f "$logind_tmp"
+
+  # suspend-then-hibernate reads its delay from sleep.conf, not logind.conf.
+  # Setting HibernateDelaySec explicitly also opts out of systemd's newer
+  # battery-estimation heuristic, which would otherwise pick its own timeout.
+  sleep_dir="/etc/systemd/sleep.conf.d"
+  sleep_file="${sleep_dir}/99-hibernate-delay.conf"
+  sleep_tmp="$(mktemp)"
+  cat >"$sleep_tmp" <<EOF
+[Sleep]
+HibernateDelaySec=${HIBERNATE_DELAY}
+EOF
+  run_root_logged "Create ${sleep_dir}" mkdir -p "$sleep_dir"
+  run_root_logged "Install ${sleep_file}" install -m 0644 "$sleep_tmp" "$sleep_file"
+  rm -f "$sleep_tmp"
+
+  # logind caches its config at startup, so without this the new lid policy
+  # would not apply until the next reboot.
+  run_root_logged "Reload systemd-logind" systemctl reload systemd-logind
 
   configure_hibernate_policy
 
@@ -1209,9 +1565,9 @@ maybe_laptop_tasks() {
     return 0
   fi
 
-  task "Configure laptop power defaults" configure_laptop_power diagnose_services
+  task laptop-power "Configure laptop power defaults" configure_laptop_power diagnose_services
 
-  task "Configure hibernate on lid close" configure_hibernate diagnose_hibernate
+  task hibernate "Configure hibernate on lid close" configure_hibernate diagnose_hibernate
 }
 
 post_summary() {
@@ -1223,57 +1579,326 @@ post_summary() {
   if [ "$HIBERNATE_REBOOT_REQUIRED" -eq 1 ]; then
     log "- Reboot before testing hibernation or lid-close behavior."
   fi
+
+  if [ "${#FAILED_TASKS[@]}" -gt 0 ]; then
+    log
+    log "${#FAILED_TASKS[@]} task(s) failed:"
+    local failure
+    for failure in "${FAILED_TASKS[@]}"; do
+      log "  - ${failure}"
+    done
+    return 1
+  fi
+}
+
+ensure_podman() {
+  # podman runs rootless, so --test needs no privileges once it is present.
+  if command -v podman >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Only auto-install when we already hold privileges. Otherwise say what to
+  # run, rather than dying on a sudo prompt that may have no terminal.
+  if [ "$EUID" -ne 0 ] && ! sudo -n true 2>/dev/null; then
+    die "podman is required by --test. Install it first: sudo apt install -y podman"
+  fi
+
+  log "podman is required by --test but was not found; installing it."
+
+  case "$PKG_FAMILY" in
+    arch)
+      run_root_logged "Install podman" pacman -S --needed --noconfirm podman
+      ;;
+    deb)
+      run_root_logged "Refresh apt metadata" apt-get update
+      run_root_logged "Install podman" apt-get install -y podman
+      ;;
+    *)
+      die "podman is required by --test and cannot be installed automatically here."
+      ;;
+  esac
+
+  command -v podman >/dev/null 2>&1 || die "podman install did not produce a usable binary."
+}
+
+run_container_test() {
+  local ctx status select_args sel
+
+  ensure_podman
+
+  ctx="$(mktemp -d)"
+  status=0
+
+  # Test against a copy so a regression can never touch the real repository.
+  mkdir -p "$ctx/repo"
+  tar -C "$ROOT_DIR" --exclude='./.bootstrap-logs' -cf - . | tar -C "$ctx/repo" -xf -
+
+  # Pass any -s selection through; with none, the container runs every task.
+  select_args=""
+  for sel in ${SELECTED_TASKS[@]+"${SELECTED_TASKS[@]}"}; do
+    select_args="${select_args} -s ${sel}"
+  done
+
+  # Mirror the profile inside the container, so --test --min tests the min set.
+  if [ "$PROFILE" = "min" ]; then
+    if [ "$EXTRAS_ALL" -eq 1 ]; then
+      select_args="${select_args} -e"
+    else
+      select_args="${select_args} --min"
+      for sel in ${SELECTED_EXTRAS[@]+"${SELECTED_EXTRAS[@]}"}; do
+        select_args="${select_args} -e ${sel}"
+      done
+    fi
+  fi
+
+  cat >"$ctx/Containerfile" <<EOF
+FROM ${TEST_IMAGE}
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git stow sudo zsh && rm -rf /var/lib/apt/lists/*
+# The container runs as root, so run_root_logged never shells out to sudo and
+# run_target_shell_logged's "sudo -u root" needs no password. NOPASSWD is belt
+# and braces so nothing can block waiting for a tty that does not exist.
+RUN echo 'Defaults !requiretty' > /etc/sudoers.d/99-bootstrap-test && \
+    echo 'root ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/99-bootstrap-test && \
+    chmod 0440 /etc/sudoers.d/99-bootstrap-test
+WORKDIR /work
+EOF
+
+  cat >"$ctx/run-test.sh" <<EOF
+set -Eeuo pipefail
+cd /work
+git config --global --add safe.directory /work
+
+fail=0
+
+# The copy carries whatever was uncommitted in the working tree, plus deletions
+# for tracked files under .bootstrap-logs which the copy excludes. So the
+# question is not "is the tree clean" but "did applying dotfiles change it".
+baseline="\$(git status --porcelain | sort)"
+
+# Full non-interactive run. --keep-going means one pass reports every broken
+# task rather than stopping at the first failure.
+./bootstrap.sh -y --keep-going${select_args} || fail=1
+
+# Then the regression that matters for stow: applying a second time, once the
+# first pass has made stow fold directories, must leave the repo untouched.
+./bootstrap.sh -y --keep-going -s dotfiles || fail=1
+
+after="\$(git status --porcelain | sort)"
+if [ "\$baseline" != "\$after" ]; then
+  echo "FAIL: applying dotfiles changed the repository state:" >&2
+  diff <(printf '%s\\n' "\$baseline") <(printf '%s\\n' "\$after") >&2 || true
+  fail=1
+fi
+
+stray="\$(find /work -name '*.pre-stow-*' -print)"
+if [ -n "\$stray" ]; then
+  echo "FAIL: stray .pre-stow-* files were left inside the repository:" >&2
+  printf '%s\\n' "\$stray" >&2
+  fail=1
+fi
+
+for f in "\$HOME/.zshrc" "\$HOME/.tmux.conf" "\$HOME/.config/waybar/config.jsonc"; do
+  if [ ! -e "\$f" ]; then
+    echo "FAIL: expected stow target missing: \$f" >&2
+    fail=1
+  fi
+done
+
+if [ "\$fail" -ne 0 ]; then
+  echo "TEST FAILED - see the per-task logs above and in .bootstrap-logs/" >&2
+  exit 1
+fi
+echo "PASS: full bootstrap ran, dotfiles reapplied cleanly, repository clean"
+EOF
+
+  log "Test image: ${TEST_IMAGE}"
+  run_logged "Build test image" podman build -t dotfiles-bootstrap-test -f "$ctx/Containerfile" "$ctx" || status=$?
+
+  if [ "$status" -eq 0 ]; then
+    run_logged "Run bootstrap test in container" podman run --rm \
+      -v "$ctx/repo:/work:Z" \
+      -v "$ctx/run-test.sh:/run-test.sh:ro,Z" \
+      dotfiles-bootstrap-test bash /run-test.sh || status=$?
+  fi
+
+  # Keep the container's own per-task logs, which hold the actual failures.
+  if [ -d "$ctx/repo/.bootstrap-logs" ]; then
+    mkdir -p "${LOG_DIR}/container"
+    cp -a "$ctx/repo/.bootstrap-logs/." "${LOG_DIR}/container/" 2>/dev/null || true
+    log "Container task logs copied to ${LOG_DIR}/container"
+  fi
+
+  rm -rf "$ctx"
+
+  if [ "$status" -ne 0 ]; then
+    die "Container test failed (exit ${status}). Logs: ${LOG_DIR}"
+  fi
+
+  log
+  log "Container test passed."
+}
+
+usage() {
+  cat <<EOF
+Usage: $0 [options]
+
+Options:
+  -y, --yes            Answer yes to every prompt. A failing step aborts
+                       instead of offering retry, so runs cannot hang.
+  -f, --force          Re-run tasks even when already detected as installed.
+  -s, --select NAME    Run only the named task. Repeatable, and accepts a
+                       comma-separated list. See --list for valid names.
+      --list           Print the task names for -s and exit.
+      --test           Run the full bootstrap inside a podman container and
+                       report every failure, installing podman if missing.
+                       Honours -s; with none, every task runs.
+      --lts            Use the current Ubuntu LTS for --test instead of the
+                       default latest non-LTS release.
+      --image REF      Use an explicit container image for --test.
+      --keep-going     Record failing tasks and continue, then list them all
+                       at the end and exit non-zero. Implied inside --test.
+      --min            Install only the minimum Neovim setup: the min package
+                       set, zsh tooling, Rust, mold, tree-sitter, Neovim,
+                       Chrome, services and dotfiles.
+  -e, --extras [LIST]  Install the min set plus extras. Bare -e enables every
+                       extra; -e codex,java enables only those. See --list.
+      --hibernate-only Configure hibernate-on-lid-close and nothing else.
+  -h, --help           Show this help and exit.
+
+Examples:
+  $0 -y                        Full non-interactive run
+  $0 -s tree-sitter,esp32      Only those two tasks
+  $0 -f -s neovim              Force a Neovim rebuild
+  $0 --test                    Full run in a container, reporting all failures
+  $0 --test --lts              Same, against the current Ubuntu LTS
+  $0 --test -s tree-sitter     Test one task in a container
+  $0 --min                     Minimum Neovim setup only
+  $0 -e                        Min plus every extra (same as no flags)
+  $0 -e codex,esp32            Min plus just those two extras
+  $0 --test --min              Container-test the min profile
+EOF
 }
 
 main() {
-  local mode="${1:-all}"
+  local mode="all"
+  local run_test=0
+  local item sel found
 
-  case "$mode" in
-    all|--hibernate-only)
-      ;;
-    *)
-      die "Usage: $0 [--hibernate-only]"
-      ;;
-  esac
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      all) ;;
+      -y|--yes) ASSUME_YES=1 ;;
+      -f|--force) FORCE_REBUILD=1 ;;
+      -s|--select)
+        [ "$#" -ge 2 ] || die "$1 requires a task name (see --list)"
+        while IFS= read -r item || [ -n "$item" ]; do
+          [ -n "$item" ] && SELECTED_TASKS+=("$item")
+          item=""
+        done < <(printf '%s' "$2" | tr ',' '\n')
+        shift
+        ;;
+      --list) LIST_ONLY=1 ;;
+      --test) run_test=1 ;;
+      --keep-going) KEEP_GOING=1 ;;
+      --min) PROFILE="min" ;;
+      -e|--extras)
+        # Extras imply the min base. A bare -e means "all extras"; -e with a
+        # value selects specific ones. The next argument is only treated as a
+        # value when it does not itself look like a flag.
+        PROFILE="min"
+        if [ "$#" -ge 2 ] && [ "${2#-}" = "$2" ]; then
+          while IFS= read -r item || [ -n "$item" ]; do
+            [ -n "$item" ] && SELECTED_EXTRAS+=("$item")
+            item=""
+          done < <(printf '%s' "$2" | tr ',' '\n')
+          shift
+        else
+          EXTRAS_ALL=1
+        fi
+        ;;
+      --lts) TEST_IMAGE="ubuntu:lts" ;;
+      --image)
+        [ "$#" -ge 2 ] || die "--image requires a container image reference"
+        TEST_IMAGE="$2"
+        shift
+        ;;
+      --hibernate-only) mode="--hibernate-only" ;;
+      -h|--help) usage; return 0 ;;
+      *) usage >&2; die "Unknown option: $1" ;;
+    esac
+    shift
+  done
 
   require_linux
   detect_container
   detect_distro
   detect_laptop
+
+  if [ "$run_test" -eq 1 ]; then
+    run_container_test
+    return 0
+  fi
+
   detect_swap
-  print_summary
+
+  if [ "$LIST_ONLY" -eq 1 ]; then
+    printf 'Available tasks (-s NAME selects any; -e NAME selects extras):\n\n'
+  else
+    print_summary
+  fi
 
   if [ "$mode" = "--hibernate-only" ]; then
     [ "$IS_LAPTOP" -eq 1 ] || die "Hibernation setup is only offered on a detected laptop."
-    task "Configure hibernate on lid close" configure_hibernate diagnose_hibernate
+    task hibernate "Configure hibernate on lid close" configure_hibernate diagnose_hibernate
     post_summary
     return
   fi
 
   case "$PKG_FAMILY" in
     arch)
-      task "Refresh Arch packages" refresh_arch diagnose_packages
-      task "Install common Arch packages" install_common_arch diagnose_packages
+      task pkg-refresh "Refresh Arch packages" refresh_arch diagnose_packages
+      task packages "Install common Arch packages" install_common_arch diagnose_packages
+      task packages-extra "Install extra Arch packages" install_extra_arch diagnose_packages
       ;;
     deb)
-      task "Refresh apt metadata" refresh_deb diagnose_packages
-      task "Install common Debian/Ubuntu packages" install_common_deb diagnose_packages
+      task pkg-refresh "Refresh apt metadata" refresh_deb diagnose_packages
+      task packages "Install common Debian/Ubuntu packages" install_common_deb diagnose_packages
+      task packages-extra "Install extra Debian/Ubuntu packages" install_extra_deb diagnose_packages
       ;;
   esac
 
-  task "Install zsh, Oh My Zsh, pnpm, and pyenv" install_shell_tooling diagnose_shell_tooling
-  task "Install Codex CLI" install_codex_cli diagnose_codex_cli
-  task "Install OpenJDK 25" install_java diagnose_java
-  task "Build and install Neovim from source" install_neovim_from_source diagnose_neovim
-  task "Install mold" install_mold diagnose_mold
-  task "Install Rust toolchain" install_rust diagnose_rust
-  task "Build and install Slippi Launcher from source" install_slippi_from_source diagnose_slippi
-  task "Install Google Chrome" install_chrome diagnose_chrome
-  task "Install Discord" install_discord diagnose_discord
-  task "Install calibre" install_calibre diagnose_calibre
-  task "Enable core services" enable_core_services diagnose_services
-  task "Apply dotfiles with Stow" apply_dotfiles diagnose_dotfiles
+  task shell-tooling "Install zsh, Oh My Zsh, pnpm, and pyenv" install_shell_tooling diagnose_shell_tooling
+  task codex "Install Codex CLI" install_codex_cli diagnose_codex_cli
+  task java "Install OpenJDK 25" install_java diagnose_java
+  task neovim "Build and install Neovim from source" install_neovim_from_source diagnose_neovim
+  task mold "Install mold" install_mold diagnose_mold
+  task rust "Install Rust toolchain" install_rust diagnose_rust
+  task tree-sitter "Install tree-sitter CLI" install_tree_sitter_cli diagnose_tree_sitter_cli
+  task esp32 "Install ESP32-S3 tooling" install_esp32_tooling diagnose_esp32_tooling
+  task slippi "Build and install Slippi Launcher from source" install_slippi_from_source diagnose_slippi
+  task chrome "Install Google Chrome" install_chrome diagnose_chrome
+  task discord "Install Discord" install_discord diagnose_discord
+  task calibre "Install calibre" install_calibre diagnose_calibre
+  task services "Enable core services" enable_core_services diagnose_services
+  task dotfiles "Apply dotfiles with Stow" apply_dotfiles diagnose_dotfiles
   maybe_laptop_tasks
+
+  if [ "$LIST_ONLY" -eq 1 ]; then
+    return 0
+  fi
+
+  # Surface -s names that never matched, rather than silently doing nothing.
+  for sel in ${SELECTED_TASKS[@]+"${SELECTED_TASKS[@]}"}; do
+    found=0
+    for item in ${SELECTED_MATCHED[@]+"${SELECTED_MATCHED[@]}"}; do
+      [ "$item" = "$sel" ] && found=1 && break
+    done
+    if [ "$found" -eq 0 ]; then
+      warn "No task named '${sel}' ran. Known tasks: ${KNOWN_TASKS[*]}"
+    fi
+  done
+
   post_summary
 }
 
