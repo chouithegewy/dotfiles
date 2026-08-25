@@ -119,11 +119,6 @@ unsetopt BEEP
 alias ls="eza"
 
 
-# Added by Antigravity CLI installer
-export PATH="/home/david/.local/bin:$PATH"
-
-export PATH="/home/david/.pixi/bin:$PATH"
-
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"
 case ":$PATH:" in
