@@ -33,11 +33,6 @@ KNOWN_TASKS=()
 # ESP32-S3 is an Xtensa part, so it needs Espressif's Rust fork.
 ESP32_TARGETS="esp32s3"
 
-# Lid close suspends first, then hibernates after this long, on AC and battery
-# alike. Suspending first keeps a quick lid-open resume; hibernating after
-# keeps a closed laptop from draining the battery flat.
-HIBERNATE_DELAY="3min"
-
 # Image used by --test. Default is the latest non-LTS Ubuntu release, which
 # surfaces breakage from newer toolchains first; --lts pins the current LTS.
 TEST_IMAGE="ubuntu:rolling"
@@ -1303,10 +1298,13 @@ configure_power_profile_autoswitch() {
   rule_file="/etc/udev/rules.d/99-power-profile-ac.rules"
   rule_tmp="$(mktemp)"
   cat >"$rule_tmp" <<EOF
-# Re-run power-mode-auto whenever AC status changes, so the active power
-# profile follows the charger instead of only being set once at login.
+# Re-run these whenever AC status changes, so the active power profile and the
+# suspend-then-hibernate delay follow the charger instead of only being set
+# once at login.
 ACTION=="change", SUBSYSTEM=="power_supply", KERNEL=="AC*", RUN+="${TARGET_HOME}/.local/bin/power-mode-auto"
 ACTION=="change", SUBSYSTEM=="power_supply", KERNEL=="ADP*", RUN+="${TARGET_HOME}/.local/bin/power-mode-auto"
+ACTION=="change", SUBSYSTEM=="power_supply", KERNEL=="AC*", RUN+="${TARGET_HOME}/.local/bin/hibernate-delay-auto"
+ACTION=="change", SUBSYSTEM=="power_supply", KERNEL=="ADP*", RUN+="${TARGET_HOME}/.local/bin/hibernate-delay-auto"
 EOF
   run_root_logged "Install power-profile AC udev rule" install -m 0644 "$rule_tmp" "$rule_file"
   rm -f "$rule_tmp"
@@ -1468,7 +1466,6 @@ EOF
 
 configure_hibernate() {
   local resume_uuid resume_arg logind_tmp logind_dir logind_file
-  local sleep_tmp sleep_dir sleep_file
 
   [ "$IS_LAPTOP" -eq 1 ] || return 0
   if ! grep -qw disk /sys/power/state 2>/dev/null; then
@@ -1500,19 +1497,11 @@ EOF
   run_root_logged "Install ${logind_file}" install -m 0644 "$logind_tmp" "$logind_file"
   rm -f "$logind_tmp"
 
-  # suspend-then-hibernate reads its delay from sleep.conf, not logind.conf.
-  # Setting HibernateDelaySec explicitly also opts out of systemd's newer
-  # battery-estimation heuristic, which would otherwise pick its own timeout.
-  sleep_dir="/etc/systemd/sleep.conf.d"
-  sleep_file="${sleep_dir}/99-hibernate-delay.conf"
-  sleep_tmp="$(mktemp)"
-  cat >"$sleep_tmp" <<EOF
-[Sleep]
-HibernateDelaySec=${HIBERNATE_DELAY}
-EOF
-  run_root_logged "Create ${sleep_dir}" mkdir -p "$sleep_dir"
-  run_root_logged "Install ${sleep_file}" install -m 0644 "$sleep_tmp" "$sleep_file"
-  rm -f "$sleep_tmp"
+  # suspend-then-hibernate reads its delay from sleep.conf, not logind.conf,
+  # and the idle schedule wants a different delay on battery than on AC. That
+  # file is therefore owned by hibernate-delay-auto, which the power-supply
+  # udev rule re-runs whenever the charger moves.
+  run_root_logged "Set the hibernate delay for the current power source" "${TARGET_HOME}/.local/bin/hibernate-delay-auto"
 
   # logind caches its config at startup, so without this the new lid policy
   # would not apply until the next reboot.

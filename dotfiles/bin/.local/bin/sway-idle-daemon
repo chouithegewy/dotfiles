@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Start swayidle with the idle schedule, replacing any instance already running.
+#
+# sway runs this from exec_always, which fires again on every config reload, so
+# without the pkill each reload would leave another swayidle behind and every
+# timeout would fire once per copy.
+#
+# The timeouts below are the union of the battery and AC schedules; idle-action
+# discards whichever half does not match the current power source:
+#
+#            lock   screen off   suspend   hibernate
+#   battery   3m       5m          10m        15m
+#   AC       10m      20m          30m        60m
+#
+# The hibernate column is the second stage of suspend-then-hibernate, timed by
+# hibernate-delay-auto, since swayidle stops counting once the machine sleeps.
+#
+# swaylock runs with -f throughout: swayidle -w waits for each command to exit,
+# so a foreground swaylock would block every later timeout and stall logind's
+# sleep inhibitor until it gives up.
+set -euo pipefail
+
+# The sway session's PATH does not include ~/.local/bin, and swayidle passes
+# this environment on to the commands below, which is how idle-action resolves.
+export PATH="$HOME/.local/bin:$PATH"
+
+pkill -x swayidle || true
+
+exec swayidle -w \
+  timeout 180 'idle-action lock none' \
+  timeout 300 'idle-action dpms-off none' \
+    resume 'swaymsg "output * dpms on"' \
+  timeout 600 'idle-action sleep lock' \
+  timeout 1200 'idle-action none dpms-off' \
+    resume 'swaymsg "output * dpms on"' \
+  timeout 1800 'idle-action none sleep' \
+  lock 'swaylock -f --color 000000' \
+  before-sleep 'swaylock -f --color 000000'

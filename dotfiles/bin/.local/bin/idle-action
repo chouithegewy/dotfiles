@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Run a swayidle timeout action only if it belongs to the current power source.
+#
+# swayidle has no concept of AC vs battery, so the sway config registers the
+# union of both schedules and routes every timeout through here. Each call
+# names what to do on battery and what to do on AC; the branch that does not
+# apply right now is a no-op.
+set -euo pipefail
+
+usage() {
+  printf 'usage: %s <battery-action> <ac-action>\n' "${0##*/}" >&2
+  printf 'actions: none | lock | dpms-off | sleep\n' >&2
+  exit 2
+}
+
+[ $# -eq 2 ] || usage
+
+if grep -q 1 /sys/class/power_supply/AC*/online 2>/dev/null || grep -q 1 /sys/class/power_supply/ADP*/online 2>/dev/null; then
+  action="$2"
+else
+  action="$1"
+fi
+
+case "$action" in
+  none)     exit 0 ;;
+  lock)     exec swaylock -f --color 000000 ;;
+  dpms-off) exec swaymsg 'output * dpms off' ;;
+  # suspend-then-hibernate rather than plain suspend: swayidle cannot keep
+  # counting while the machine is asleep, so the second-stage hibernate has to
+  # come from an RTC alarm. hibernate-delay-auto sets the delay to match.
+  sleep)    exec systemctl suspend-then-hibernate ;;
+  *)        usage ;;
+esac

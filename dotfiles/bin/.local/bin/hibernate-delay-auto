@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Keep HibernateDelaySec in step with the power source.
+#
+# suspend-then-hibernate reads its delay from sleep.conf, which cannot branch
+# on AC vs battery, so a udev rule re-runs this on every power-supply change.
+# Pairing it with the idle schedule in the sway config gives hibernation at
+# 15 minutes idle on battery and 60 minutes on AC.
+#
+# Setting the value explicitly also opts out of systemd's battery-estimation
+# heuristic, which would otherwise pick a timeout of its own.
+#
+# systemd-sleep reads this file when the sleep operation runs, so there is
+# nothing to reload after writing it.
+set -euo pipefail
+
+BATTERY_DELAY="5min"
+AC_DELAY="30min"
+
+conf_dir="/etc/systemd/sleep.conf.d"
+conf_file="${conf_dir}/99-hibernate-delay.conf"
+
+if grep -q 1 /sys/class/power_supply/AC*/online 2>/dev/null || grep -q 1 /sys/class/power_supply/ADP*/online 2>/dev/null; then
+  delay="$AC_DELAY"
+else
+  delay="$BATTERY_DELAY"
+fi
+
+conf_tmp="$(mktemp)"
+cat >"$conf_tmp" <<EOF
+[Sleep]
+HibernateDelaySec=${delay}
+EOF
+
+mkdir -p "$conf_dir"
+install -m 0644 "$conf_tmp" "$conf_file"
+rm -f "$conf_tmp"
