@@ -32,20 +32,28 @@ bindsym --locked XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@
 bindsym --locked XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 bindsym --locked XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
 
-bindsym $mod+j focus left
-bindsym $mod+k focus down
-bindsym $mod+l focus up
+# Vim-style focus. This shifts j/k/l one position left from the i3 default
+# (j=left k=down l=up ;=right) so that h/l are horizontal and j/k vertical.
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+# Kept from the old scheme; still focuses right, now a duplicate of $mod+l.
 bindsym $mod+semicolon focus right
 bindsym $mod+Left focus left
 bindsym $mod+Down focus down
 bindsym $mod+Up focus up
 bindsym $mod+Right focus right
 
-bindsym $mod+Shift+j move left
-bindsym $mod+Shift+k move down
-bindsym $mod+Shift+l move up
+# Same vim layout as focus above, so Shift+key moves the container in the
+# direction that key focuses.
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+# Kept from the old scheme; still moves right, now a duplicate of $mod+Shift+l.
 bindsym $mod+Shift+semicolon move right
-bindsym $mod+h split h
+bindsym $mod+b split h
 bindsym $mod+v split v
 
 set $ws1 "1"
