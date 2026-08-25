@@ -22,5 +22,9 @@
 !/dotfiles/bin/.local/bin/google-chrome
 !/dotfiles/bin/.local/bin/google-chrome-stable
 !/dotfiles/bin/.local/bin/hibernate-delay-auto
+!/dotfiles/bin/.local/bin/i3status-wrapper
 !/dotfiles/bin/.local/bin/idle-action
+!/dotfiles/bin/.local/bin/lock-screen
+!/dotfiles/bin/.local/bin/power-mode-auto
+!/dotfiles/bin/.local/bin/slippi-launcher
 !/dotfiles/bin/.local/bin/sway-idle-daemon
