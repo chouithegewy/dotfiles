@@ -57,6 +57,10 @@ window#waybar {
     background: #2f6b3a;
 }
 
+#battery.charging {
+    background: #2f6b3a;
+}
+
 #battery.warning,
 #temperature.warning {
     color: #f0c674;

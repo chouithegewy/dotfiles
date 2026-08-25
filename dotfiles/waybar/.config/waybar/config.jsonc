@@ -59,9 +59,9 @@
             "critical": 15
         },
         "format": "BAT {capacity}%",
-        "format-charging": "BAT {capacity}% +",
+        "format-charging": "🔌 BAT {capacity}%",
         "format-plugged": "BAT {capacity}% AC",
-        "format-full": "BAT full",
+        "format-full": "🔌 BAT full",
         "tooltip-format": "Battery: {capacity}%\n{timeTo}"
     },
     "pulseaudio": {
