@@ -9,7 +9,10 @@
 /dotfiles/cargo/.cargo/.package-cache-mutate
 /dotfiles/cargo/.cargo/bin/
 /dotfiles/cargo/.cargo/registry/
-/dotfiles/codex/
+/dotfiles/codex/*
+!/dotfiles/codex/.codex/
+/dotfiles/codex/.codex/*
+!/dotfiles/codex/.codex/config.toml
 /dotfiles/gh/.config/gh/hosts.yml
 /.nvimlog
 /nvim.log
@@ -19,6 +22,7 @@
 /dotfiles/bin/.local/*
 !/dotfiles/bin/.local/bin/
 /dotfiles/bin/.local/bin/*
+!/dotfiles/bin/.local/bin/codex-config-clean
 !/dotfiles/bin/.local/bin/google-chrome
 !/dotfiles/bin/.local/bin/google-chrome-stable
 !/dotfiles/bin/.local/bin/hibernate-delay-auto

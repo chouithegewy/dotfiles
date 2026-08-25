@@ -8,3 +8,7 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
+[filter "codex-config"]
+	clean = ~/.local/bin/codex-config-clean
+	smudge = cat
+	required = true

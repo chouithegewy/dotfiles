@@ -1,0 +1,5 @@
+# codex rewrites config.toml on every run, appending a [projects."..."] trust
+# entry for each directory it is used in, and ~/.codex is a stow symlink into
+# this repo. The clean filter drops those tables on the way into the index so
+# the settings stay versioned while the directory list stays on this machine.
+dotfiles/codex/.codex/config.toml filter=codex-config

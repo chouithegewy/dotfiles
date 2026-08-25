@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Strip [projects."..."] tables out of a codex config.toml on stdin.
+#
+# Used as a git clean filter (see .gitattributes and .gitconfig): codex records
+# a trust_level entry for every directory it is ever run in, and ~/.codex is a
+# stow symlink into this repo, so those paths land in the working tree and used
+# to get committed to a public repository. Filtering on the way into the index
+# keeps the settings versioned while the directory inventory stays local.
+#
+# Must be idempotent: git compares the filtered working tree against the stored
+# blob, so cleaning already-clean input has to be a no-op, or the file would
+# always show as modified. That is why blank lines are buffered rather than
+# printed as they arrive - a stripped table at the end of the file would
+# otherwise leave a trailing blank line that the next pass would not reproduce.
+set -euo pipefail
+
+awk '
+  BEGIN { skipping = 0; pending = 0; started = 0 }
+
+  # A table header ends any block being skipped, and starts a new skip if it is
+  # itself a projects table. Sub-tables such as [projects."x".y] match too.
+  /^[[:space:]]*\[/ {
+    if ($0 ~ /^[[:space:]]*\[projects\./) { skipping = 1; next }
+    if (skipping) {
+      skipping = 0
+      # Put back one separating blank line, since the blanks that belonged to
+      # the dropped tables were swallowed with them.
+      if (started && pending == 0) pending = 1
+    }
+  }
+
+  skipping { next }
+
+  # Hold blank lines until something needs separating from what came before, so
+  # neither leading nor trailing blanks survive.
+  /^[[:space:]]*$/ { if (started) pending++; next }
+
+  {
+    while (pending-- > 0) print ""
+    pending = 0
+    print
+    started = 1
+  }
+'
