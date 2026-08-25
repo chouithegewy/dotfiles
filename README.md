@@ -4,12 +4,43 @@ This repo is a fresh-machine bootstrap for Arch Linux and Debian/Ubuntu.
 
 It gives you:
 
+- A one-command `install.sh` entry point for a machine with nothing on it: it installs `git`, clones this repo, and hands off to the bootstrap.
 - An interactive `bootstrap.sh` that detects the distro, installs packages, and lets you retry, skip, or diagnose failed steps.
 - GNU Stow-managed dotfiles for `tmux`, Sway, Waybar, zsh, Codex CLI config/rules, helper scripts, Oh My Zsh custom shell init, Git, Ghostty, GitHub CLI, btop, Chrome flags, desktop portal preferences, default app handlers, and a Rust `mold` config.
 - Laptop-aware setup for NetworkManager, Bluetooth, power profiles, and lid-close hibernation, including provisioning a RAM-sized swap file when needed.
 - A `system/etc/` snapshot of local Arch install-time config that is useful reference material but is not applied automatically.
 
 ## Usage
+
+### Fresh machine
+
+One command on a box with nothing on it. It installs `git`, clones this repo to
+`~/dotfiles`, and hands off to `bootstrap.sh`:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/chouithegewy/dotfiles/main/install.sh)"
+```
+
+Anything after `--` is passed straight through to `bootstrap.sh`:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/chouithegewy/dotfiles/main/install.sh)" -- --min
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/chouithegewy/dotfiles/main/install.sh)" -- -y -e codex,java
+```
+
+Use the `bash -c "$(curl ...)"` form, not `curl ... | bash`. The bootstrap prompts
+on stdin, and a pipe feeds it the script text instead of your answers. `install.sh`
+reattaches the terminal where one exists; with no TTY at all (CI, a container),
+pass `-y`.
+
+Re-running updates the existing clone rather than recloning. `DOTFILES_REPO`,
+`DOTFILES_DIR`, and `DOTFILES_BRANCH` override the defaults.
+
+Do not run it as root. The bootstrap derives the target user from your login, so
+a root run installs every dotfile into `/root`; it escalates per step with `sudo`
+instead.
+
+### Existing clone
 
 Run the bootstrap as your normal user:
 

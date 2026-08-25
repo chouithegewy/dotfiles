@@ -12,3 +12,8 @@
 	clean = ~/.local/bin/codex-config-clean
 	smudge = cat
 	required = true
+# Clone and fetch over HTTPS so a fresh machine needs no credentials,
+# but push over SSH, which is how this account authenticates for writes.
+# Applies to every github.com remote, submodules included.
+[url "git@github.com:"]
+	pushInsteadOf = https://github.com/
