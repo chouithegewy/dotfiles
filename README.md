@@ -75,6 +75,7 @@ In this repo the Stow packages are under `dotfiles/`, and the bootstrap applies 
 - Codex CLI is installed globally with `pnpm add -g @openai/codex`; `~/.codex/config.toml` and `~/.codex/rules/default.rules` are managed by Stow, while auth, logs, history, sessions, and caches stay untracked.
 - `~/.config/chrome-flags.conf`, foot, Git, GitHub CLI non-auth config, btop, `~/.inputrc`, `~/.config/mimeapps.list`, and desktop portal preferences are managed by Stow. GitHub CLI hosts/auth files, browser profiles, cookies, tokens, and generated app state are intentionally not tracked.
 - The Stow-managed `google-chrome` and `google-chrome-stable` launchers load `~/.config/chrome-flags.conf` and select native Wayland when a Wayland socket is available.
+- `git-lfs` is installed because the Stow-managed `~/.gitconfig` declares the LFS filters with `required = true`. Without the binary present, cloning or checking out any LFS-tracked repository aborts partway with `git-lfs: not found`, so the two have to be provisioned together.
 - `ripgrep` and `fd` are installed; on Debian/Ubuntu the shell aliases `fd` to `fdfind`.
 - Slippi Launcher is built from source into `~/.local/src/slippi-launcher` and installed under `~/.local/opt/slippi-launcher`.
 - Desktop applications include Thunar, GIMP, Discord, LibreOffice, VLC, OBS Studio, Google Chrome, calibre, and Slippi Launcher.

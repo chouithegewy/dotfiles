@@ -79,6 +79,7 @@ ARCH_MIN_PACKAGES=(
   fd
   foot
   git
+  git-lfs
   grim
   jq
   libpulse
@@ -140,6 +141,7 @@ DEB_MIN_PACKAGES=(
   fd-find
   foot
   git
+  git-lfs
   gnupg
   grim
   jq
