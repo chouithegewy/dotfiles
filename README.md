@@ -6,7 +6,7 @@ It gives you:
 
 - A one-command `install.sh` entry point for a machine with nothing on it: it installs `git`, clones this repo, and hands off to the bootstrap.
 - An interactive `bootstrap.sh` that detects the distro, installs packages, and lets you retry, skip, or diagnose failed steps.
-- GNU Stow-managed dotfiles for `tmux`, Sway, Waybar, zsh, Codex CLI config/rules, helper scripts, Oh My Zsh custom shell init, Git, Ghostty, GitHub CLI, btop, Chrome flags, desktop portal preferences, default app handlers, and a Rust `mold` config.
+- GNU Stow-managed dotfiles for `tmux`, Sway, Waybar, zsh, Codex CLI config/rules, helper scripts, Oh My Zsh custom shell init, Git, foot, GitHub CLI, btop, Chrome flags, desktop portal preferences, default app handlers, and a Rust `mold` config.
 - Laptop-aware setup for NetworkManager, Bluetooth, power profiles, and lid-close hibernation, including provisioning a RAM-sized swap file when needed.
 - A `system/etc/` snapshot of local Arch install-time config that is useful reference material but is not applied automatically.
 
@@ -69,10 +69,11 @@ In this repo the Stow packages are under `dotfiles/`, and the bootstrap applies 
 ## Notes
 
 - Your current `~/.tmux.conf` is managed by Stow, with the local mouse and clipboard settings plus copy-mode bindings for the system clipboard.
-- The Sway config uses Super as the modifier, Ghostty as the terminal, Rofi as the launcher, and Waybar for the bar.
+- The Sway config uses Super as the modifier, foot as the terminal, Rofi as the launcher, and Waybar for the bar.
+- The foot config only overrides `font-decrease`, adding `Control+underscore` so Ctrl+Shift+- zooms out symmetrically with Ctrl+Shift+=. Overriding an action in `foot.ini` replaces its whole default list, so the built-in bindings are repeated there.
 - `zsh`, Oh My Zsh, `pnpm`, and `pyenv` are installed together, with `~/.zshrc` and Oh My Zsh custom init managed by Stow. Node.js itself is installed and managed via `pnpm runtime set node lts -g` (no `nvm`); `pnpm add -g npm` makes `npm` available for third-party projects that expect it.
 - Codex CLI is installed globally with `pnpm add -g @openai/codex`; `~/.codex/config.toml` and `~/.codex/rules/default.rules` are managed by Stow, while auth, logs, history, sessions, and caches stay untracked.
-- `~/.config/chrome-flags.conf`, Ghostty, Git, GitHub CLI non-auth config, btop, `~/.inputrc`, `~/.config/mimeapps.list`, and desktop portal preferences are managed by Stow. GitHub CLI hosts/auth files, browser profiles, cookies, tokens, and generated app state are intentionally not tracked.
+- `~/.config/chrome-flags.conf`, foot, Git, GitHub CLI non-auth config, btop, `~/.inputrc`, `~/.config/mimeapps.list`, and desktop portal preferences are managed by Stow. GitHub CLI hosts/auth files, browser profiles, cookies, tokens, and generated app state are intentionally not tracked.
 - The Stow-managed `google-chrome` and `google-chrome-stable` launchers load `~/.config/chrome-flags.conf` and select native Wayland when a Wayland socket is available.
 - `ripgrep` and `fd` are installed; on Debian/Ubuntu the shell aliases `fd` to `fdfind`.
 - Slippi Launcher is built from source into `~/.local/src/slippi-launcher` and installed under `~/.local/opt/slippi-launcher`.
