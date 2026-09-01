@@ -82,6 +82,7 @@ ARCH_MIN_PACKAGES=(
   grim
   jq
   libpulse
+  mako
   mold
   network-manager-applet
   networkmanager
@@ -142,6 +143,7 @@ DEB_MIN_PACKAGES=(
   gnupg
   grim
   jq
+  mako-notifier
   network-manager
   network-manager-gnome
   pavucontrol
@@ -1271,7 +1273,7 @@ install_slippi_from_source() {
 
 apply_dotfiles() {
   run_target_shell_logged "Initialize dotfile submodules" "git -C '$ROOT_DIR' submodule sync --recursive && git -C '$ROOT_DIR' submodule update --init --recursive"
-  run_target_shell_logged "Apply Stow packages" "set -e; nvim_target='$ROOT_DIR/dotfiles/nvim'; if ! find \"\$nvim_target\" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then echo 'Neovim submodule is empty.' >&2; exit 1; fi; stamp=\$(date +%Y%m%d-%H%M%S); mkdir -p '$TARGET_HOME/.config'; for file in '$TARGET_HOME/.tmux.conf' '$TARGET_HOME/.gitconfig' '$TARGET_HOME/.inputrc' '$TARGET_HOME/.zshrc' '$TARGET_HOME/.codex/config.toml' '$TARGET_HOME/.codex/rules/default.rules' '$TARGET_HOME/.config/btop/btop.conf' '$TARGET_HOME/.config/chrome-flags.conf' '$TARGET_HOME/.config/gh/config.yml' '$TARGET_HOME/.config/foot/foot.ini' '$TARGET_HOME/.config/i3status/config' '$TARGET_HOME/.config/sway/config' '$TARGET_HOME/.config/waybar/config.jsonc' '$TARGET_HOME/.config/waybar/style.css' '$TARGET_HOME/.config/mimeapps.list' '$TARGET_HOME/.config/xdg-desktop-portal/portals.conf'; do if [ -e \"\$file\" ] && [ ! -L \"\$file\" ]; then real=\$(readlink -f \"\$file\" 2>/dev/null || true); case \"\$real\" in '$ROOT_DIR'/*) ;; *) mv \"\$file\" \"\$file.pre-stow-\$stamp\" ;; esac; fi; done; cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' tmux sway waybar bin cargo oh-my-zsh-custom applications zsh codex btop chrome foot gh git inputrc xdg-desktop-portal; nvim_link='$TARGET_HOME/.config/nvim'; if [ -e \"\$nvim_link\" ] || [ -L \"\$nvim_link\" ]; then current=\$(readlink -f \"\$nvim_link\" || true); if [ \"\$current\" != \"\$nvim_target\" ]; then mv \"\$nvim_link\" \"\$nvim_link.pre-stow-\$stamp\"; ln -s \"\$nvim_target\" \"\$nvim_link\"; fi; else ln -s \"\$nvim_target\" \"\$nvim_link\"; fi"
+  run_target_shell_logged "Apply Stow packages" "set -e; nvim_target='$ROOT_DIR/dotfiles/nvim'; if ! find \"\$nvim_target\" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then echo 'Neovim submodule is empty.' >&2; exit 1; fi; stamp=\$(date +%Y%m%d-%H%M%S); mkdir -p '$TARGET_HOME/.config'; for file in '$TARGET_HOME/.tmux.conf' '$TARGET_HOME/.gitconfig' '$TARGET_HOME/.inputrc' '$TARGET_HOME/.zshrc' '$TARGET_HOME/.codex/config.toml' '$TARGET_HOME/.codex/rules/default.rules' '$TARGET_HOME/.config/btop/btop.conf' '$TARGET_HOME/.config/chrome-flags.conf' '$TARGET_HOME/.config/gh/config.yml' '$TARGET_HOME/.config/foot/foot.ini' '$TARGET_HOME/.config/i3status/config' '$TARGET_HOME/.config/mako/config' '$TARGET_HOME/.config/sway/config' '$TARGET_HOME/.config/waybar/config.jsonc' '$TARGET_HOME/.config/waybar/style.css' '$TARGET_HOME/.config/mimeapps.list' '$TARGET_HOME/.config/xdg-desktop-portal/portals.conf'; do if [ -e \"\$file\" ] && [ ! -L \"\$file\" ]; then real=\$(readlink -f \"\$file\" 2>/dev/null || true); case \"\$real\" in '$ROOT_DIR'/*) ;; *) mv \"\$file\" \"\$file.pre-stow-\$stamp\" ;; esac; fi; done; cd '$ROOT_DIR/dotfiles' && stow -R -t '$TARGET_HOME' tmux sway waybar mako bin cargo oh-my-zsh-custom applications zsh codex btop chrome foot gh git inputrc xdg-desktop-portal; nvim_link='$TARGET_HOME/.config/nvim'; if [ -e \"\$nvim_link\" ] || [ -L \"\$nvim_link\" ]; then current=\$(readlink -f \"\$nvim_link\" || true); if [ \"\$current\" != \"\$nvim_target\" ]; then mv \"\$nvim_link\" \"\$nvim_link.pre-stow-\$stamp\"; ln -s \"\$nvim_target\" \"\$nvim_link\"; fi; else ln -s \"\$nvim_target\" \"\$nvim_link\"; fi"
 }
 
 enable_core_services() {

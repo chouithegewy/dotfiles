@@ -6,7 +6,7 @@ It gives you:
 
 - A one-command `install.sh` entry point for a machine with nothing on it: it installs `git`, clones this repo, and hands off to the bootstrap.
 - An interactive `bootstrap.sh` that detects the distro, installs packages, and lets you retry, skip, or diagnose failed steps.
-- GNU Stow-managed dotfiles for `tmux`, Sway, Waybar, zsh, Codex CLI config/rules, helper scripts, Oh My Zsh custom shell init, Git, foot, GitHub CLI, btop, Chrome flags, desktop portal preferences, default app handlers, and a Rust `mold` config.
+- GNU Stow-managed dotfiles for `tmux`, Sway, Waybar, zsh, Codex CLI config/rules, helper scripts, Oh My Zsh custom shell init, Git, foot, mako, GitHub CLI, btop, Chrome flags, desktop portal preferences, default app handlers, and a Rust `mold` config.
 - Laptop-aware setup for NetworkManager, Bluetooth, power profiles, and lid-close hibernation, including provisioning a RAM-sized swap file when needed.
 - A `system/etc/` snapshot of local Arch install-time config that is useful reference material but is not applied automatically.
 
@@ -79,6 +79,7 @@ In this repo the Stow packages are under `dotfiles/`, and the bootstrap applies 
 - Slippi Launcher is built from source into `~/.local/src/slippi-launcher` and installed under `~/.local/opt/slippi-launcher`.
 - Desktop applications include Thunar, GIMP, Discord, LibreOffice, VLC, OBS Studio, Google Chrome, calibre, and Slippi Launcher.
 - Wi-Fi stays clickable through `nm-applet` under Sway. Waybar shows the active power profile, cycles profiles on click, and displays the selected profile and driver on hover.
+- Notifications are handled by `mako`, which draws them through `wlr-layer-shell` on the `overlay` layer, so they float above the tiling layout instead of being tiled into it as ordinary windows. Chrome only probes for the `org.freedesktop.Notifications` D-Bus name at startup and falls back to drawing its own notification windows if nothing owns it, so restart Chrome once after the first install. `mako` is D-Bus activatable and the Sway config exports `WAYLAND_DISPLAY` into the activation environment, so it needs no `exec` line.
 - Waybar shows volume and mute state via PipeWire's `wpctl`; scroll to adjust, left-click to toggle mute, right-click to open `pavucontrol` for per-app sliders and input/output device selection. `XF86AudioRaiseVolume`/`LowerVolume`/`Mute`/`MicMute` are bound in the Sway config (working even while locked) and also drive `wpctl`.
 - On Debian/Ubuntu, Java 25 is installed from Eclipse Temurin and Google Chrome is installed from Google's `.deb`.
 - The Rust Stow package enables `mold` for common Linux Rust targets via Cargo config.

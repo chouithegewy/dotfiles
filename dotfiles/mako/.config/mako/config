@@ -1,0 +1,46 @@
+# Notification daemon for Sway.
+#
+# Without a daemon owning org.freedesktop.Notifications, Chrome falls back to
+# drawing its own notification bubbles as ordinary Wayland toplevels, which Sway
+# then tiles into the workspace. mako renders through wlr-layer-shell instead, so
+# notifications never enter the window tree at all: they float above the layout
+# on whatever workspace is visible. Chrome only probes for the D-Bus name at
+# startup, so it has to be restarted once after mako is first installed.
+#
+# mako is D-Bus activatable and the Sway config exports WAYLAND_DISPLAY into the
+# activation environment, so no exec line is needed; it starts on the first
+# notification.
+
+# Colours follow the Waybar palette in dotfiles/waybar/.config/waybar/style.css:
+# black ground, white text, the i3 focus blue as the accent, and #900000 for
+# urgent. Font matches the Sway/Waybar DejaVu Sans Mono, one point up because
+# notification text sits further from the eye than a bar does.
+font=DejaVu Sans Mono 9
+background-color=#000000e6
+text-color=#ffffff
+border-color=#285577
+progress-color=over #285577
+
+# overlay keeps notifications above fullscreen windows; the default top layer is
+# painted underneath them.
+layer=overlay
+anchor=top-right
+margin=10
+padding=12
+border-size=2
+border-radius=6
+width=380
+height=160
+
+# Newest first, and a bounded stack so a burst of messages cannot paper over the
+# whole output.
+sort=-time
+max-visible=5
+default-timeout=6000
+
+[urgency=low]
+border-color=#666666
+
+[urgency=critical]
+border-color=#900000
+default-timeout=0
