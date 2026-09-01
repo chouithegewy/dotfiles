@@ -103,3 +103,8 @@ input type:touchpad {
 }
 
 output HDMI-A-3 mode 1920x1080@143.992Hz
+
+# remote-viewer (QEMU SPICE console) asks the compositor to inhibit keyboard
+# shortcuts so combos like alt+1 reach the guest instead of sway. Refuse that
+# request for it, so sway keeps its own bindings while the VM has focus.
+for_window [app_id="remote-viewer"] shortcuts_inhibitor disable
