@@ -54,6 +54,7 @@ SELECTED_EXTRAS=()
 MIN_TASKS=(
   pkg-refresh
   packages
+  fonts
   shell-tooling
   rust
   mold
@@ -78,6 +79,7 @@ ARCH_MIN_PACKAGES=(
   eza
   fd
   foot
+  fontconfig
   git
   git-lfs
   grim
@@ -140,6 +142,7 @@ DEB_MIN_PACKAGES=(
   eza
   fd-find
   foot
+  fontconfig
   git
   git-lfs
   gnupg
@@ -615,6 +618,10 @@ check_codex_installed() {
   [ -x "$TARGET_HOME/.local/share/pnpm/bin/codex" ]
 }
 
+check_fonts_installed() {
+  [ -f "$TARGET_HOME/.local/share/fonts/nerd-fonts-symbols/SymbolsNerdFontMono-Regular.ttf" ]
+}
+
 check_tree_sitter_installed() {
   [ -x "$TARGET_HOME/.cargo/bin/tree-sitter" ]
 }
@@ -865,6 +872,12 @@ diagnose_tree_sitter_cli() {
   run_target_shell_logged "tree-sitter check" "source '$TARGET_HOME/.cargo/env' 2>/dev/null || true; command -v tree-sitter >/dev/null 2>&1 && tree-sitter --version || echo 'tree-sitter: missing'"
 }
 
+diagnose_fonts() {
+  log
+  log "Nerd Font symbols diagnostics:"
+  run_target_shell_logged "Check symbol font" "fc-match 'Symbols Nerd Font Mono'; fc-list ':charset=f0ca3' family"
+}
+
 diagnose_esp32_tooling() {
   log
   log "ESP32 tooling diagnostics:"
@@ -979,6 +992,23 @@ install_common_deb() {
 
 install_extra_deb() {
   run_root_logged "Install Debian/Ubuntu extra packages" apt-get install -y "${DEB_EXTRA_PACKAGES[@]}"
+}
+
+install_nerd_font_symbols() {
+  # The symbols-only font supplies Neovim icons without changing the text font.
+  run_target_shell_logged "Install Nerd Font symbols" "$(cat <<'EOF'
+set -euo pipefail
+font_dir="$HOME/.local/share/fonts/nerd-fonts-symbols"
+font_tmp="$(mktemp -d)"
+trap 'rm -rf -- "$font_tmp"' EXIT
+curl -fsSL -o "$font_tmp/symbols.zip" https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/NerdFontsSymbolsOnly.zip
+printf '%s  %s\n' fdca3682534f6f65e1ccb2345b0362ccf67d9b8eca7c8025330946e93e2473bc "$font_tmp/symbols.zip" | sha256sum --check --status
+unzip -q "$font_tmp/symbols.zip" -d "$font_tmp/extracted"
+install -Dm644 "$font_tmp/extracted/SymbolsNerdFontMono-Regular.ttf" "$font_dir/SymbolsNerdFontMono-Regular.ttf"
+install -m644 "$font_tmp/extracted/LICENSE" "$font_dir/LICENSE"
+fc-cache -f "$font_dir"
+EOF
+)"
 }
 
 ensure_aur_helper() {
@@ -1754,7 +1784,7 @@ Options:
       --keep-going     Record failing tasks and continue, then list them all
                        at the end and exit non-zero. Implied inside --test.
       --min            Install only the minimum Neovim setup: the min package
-                       set, zsh tooling, Rust, mold, tree-sitter, Neovim,
+                       set, Nerd Font symbols, zsh tooling, Rust, mold, tree-sitter, Neovim,
                        Chrome, services and dotfiles.
   -e, --extras [LIST]  Install the min set plus extras. Bare -e enables every
                        extra; -e codex,java enables only those. See --list.
@@ -1863,6 +1893,7 @@ main() {
       ;;
   esac
 
+  task fonts "Install Nerd Font symbols for Neovim" install_nerd_font_symbols diagnose_fonts
   task shell-tooling "Install zsh, Oh My Zsh, pnpm, and pyenv" install_shell_tooling diagnose_shell_tooling
   task codex "Install Codex CLI" install_codex_cli diagnose_codex_cli
   task java "Install OpenJDK 25" install_java diagnose_java

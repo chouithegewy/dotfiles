@@ -70,9 +70,11 @@ In this repo the Stow packages are under `dotfiles/`, and the bootstrap applies 
 
 - Your current `~/.tmux.conf` is managed by Stow, with the local mouse and clipboard settings plus copy-mode bindings for the system clipboard.
 - The Sway config uses Super as the modifier, foot as the terminal, Rofi as the launcher, and Waybar for the bar.
-- The foot config only overrides `font-decrease`, adding `Control+underscore` so Ctrl+Shift+- zooms out symmetrically with Ctrl+Shift+=. Overriding an action in `foot.ini` replaces its whole default list, so the built-in bindings are repeated there.
+- The foot config uses the normal monospace text font with `Symbols Nerd Font Mono` as a fallback for Neovim icons. The `fonts` bootstrap task installs that symbols font and is included in the minimum setup; run `./bootstrap.sh -y -s fonts` to install it separately. New terminal windows pick up font changes.
+- The foot config also overrides `font-decrease`, adding `Control+underscore` so Ctrl+Shift+- zooms out symmetrically with Ctrl+Shift+=. Overriding an action in `foot.ini` replaces its whole default list, so the built-in bindings are repeated there.
 - `zsh`, Oh My Zsh, `pnpm`, and `pyenv` are installed together, with `~/.zshrc` and Oh My Zsh custom init managed by Stow. Node.js itself is installed and managed via `pnpm runtime set node lts -g` (no `nvm`); `pnpm add -g npm` makes `npm` available for third-party projects that expect it.
 - Codex CLI is installed globally with `pnpm add -g @openai/codex`; `~/.codex/config.toml` and `~/.codex/rules/default.rules` are managed by Stow, while auth, logs, history, sessions, and caches stay untracked.
+- Codex uses `tui.alternate_screen = "never"` to preserve conversation output in tmux scrollback (`Ctrl+a`, then `[`); restart Codex after changing this setting.
 - `~/.config/chrome-flags.conf`, foot, Git, GitHub CLI non-auth config, btop, `~/.inputrc`, `~/.config/mimeapps.list`, and desktop portal preferences are managed by Stow. GitHub CLI hosts/auth files, browser profiles, cookies, tokens, and generated app state are intentionally not tracked.
 - The Stow-managed `google-chrome` and `google-chrome-stable` launchers load `~/.config/chrome-flags.conf` and select native Wayland when a Wayland socket is available.
 - `git-lfs` is installed because the Stow-managed `~/.gitconfig` declares the LFS filters with `required = true`. Without the binary present, cloning or checking out any LFS-tracked repository aborts partway with `git-lfs: not found`, so the two have to be provisioned together.
